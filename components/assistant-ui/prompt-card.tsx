@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Pencil } from "lucide-react";
+import { X, Pencil, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface PromptCardProps {
@@ -17,6 +17,7 @@ interface PromptCardProps {
 export function PromptCard({ id, title, content = [], onDelete, onUpdate, isEditing = false, onEditingChange }: PromptCardProps) {
   const [editTitle, setEditTitle] = useState(title);
   const [editContent, setEditContent] = useState(content.join("\n"));
+  const [isSummarizing, setIsSummarizing] = useState(false);
 
   useEffect(() => {
     if (!isEditing) {
@@ -24,6 +25,68 @@ export function PromptCard({ id, title, content = [], onDelete, onUpdate, isEdit
       setEditContent(content.join("\n"));
     }
   }, [title, content, isEditing]);
+
+  const normalizeContent = (text: string) =>
+    text
+      .split("\n")
+      .map(line => line.trim())
+      .filter(Boolean);
+
+  const handleSummarize = async () => {
+    const sourceContent = isEditing ? normalizeContent(editContent) : content;
+    if (sourceContent.length === 0 || isSummarizing) return;
+
+    setIsSummarizing(true);
+    try {
+      const response = await fetch("/api/summarize", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          title: isEditing ? editTitle : title,
+          content: sourceContent
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Summarize request failed with ${response.status}`);
+      }
+
+      const { summary } = await response.json() as { summary?: string };
+      if (!summary) return;
+
+      const summaryLines = normalizeContent(summary);
+      if (summaryLines.length === 0) return;
+
+      const nextTitle = isEditing ? editTitle : title;
+      onUpdate?.(id, { title: nextTitle, content: summaryLines });
+      setEditContent(summaryLines.join("\n"));
+    } catch (error) {
+      console.error("Failed to summarize prompt card:", error);
+    } finally {
+      setIsSummarizing(false);
+    }
+  };
+
+  const renderSummarizeButton = (className?: string) => {
+    const hasContent = isEditing ? normalizeContent(editContent).length > 0 : content.length > 0;
+    return (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          handleSummarize();
+        }}
+        disabled={isSummarizing || !hasContent}
+        className={cn(
+          "flex items-center gap-2 rounded bg-yellow-100 px-3 py-1 text-sm font-medium text-yellow-900 hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-yellow-900/30 dark:text-yellow-200 dark:hover:bg-yellow-900/50",
+          className
+        )}
+      >
+        {isSummarizing ? <Loader2 className="size-4 animate-spin" /> : "Summarize"}
+      </button>
+    );
+  };
 
   const handleSave = () => {
     onUpdate?.(id, {
@@ -66,7 +129,8 @@ export function PromptCard({ id, title, content = [], onDelete, onUpdate, isEdit
             className="w-full rounded border px-2 py-1 text-sm"
             rows={5}
           />
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {renderSummarizeButton()}
             <button
               onClick={handleSave}
               className="rounded bg-yellow-400 px-3 py-1 text-sm hover:bg-yellow-500"
@@ -96,15 +160,18 @@ export function PromptCard({ id, title, content = [], onDelete, onUpdate, isEdit
               </ul>
             )}
           </div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onEditingChange?.(true);
-            }}
-            className="absolute bottom-2 right-2 rounded p-1 hover:bg-yellow-200 dark:hover:bg-yellow-900"
-          >
-            <Pencil className="size-4 text-yellow-600" />
-          </button>
+          <div className="mt-3 flex items-center justify-between">
+            {renderSummarizeButton("px-3")}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEditingChange?.(true);
+              }}
+              className="rounded p-1 hover:bg-yellow-200 dark:hover:bg-yellow-900"
+            >
+              <Pencil className="size-4 text-yellow-600" />
+            </button>
+          </div>
         </div>
       )}
     </div>
