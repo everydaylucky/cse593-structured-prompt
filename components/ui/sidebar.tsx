@@ -31,6 +31,7 @@ const SIDEBAR_WIDTH = "16rem";
 const SIDEBAR_WIDTH_MOBILE = "18rem";
 const SIDEBAR_WIDTH_ICON = "3rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
+const SIDEBAR_SLIDE_ANIMATION_MS = 200;
 
 type SidebarContextProps = {
   state: "expanded" | "collapsed";
@@ -278,6 +279,43 @@ function SidebarTrigger({
     </Button>
   );
 }
+
+
+
+// Show a sidebar trigger when the sidebar is collapsed or mobile and not open.
+function SidebarExpandTrigger() {
+  const { state, isMobile, openMobile } = useSidebar();
+  const [canShow, setCanShow] = React.useState(false);
+
+  React.useEffect(() => {
+    const shouldShow = state === "collapsed" || (isMobile && !openMobile);
+
+    if (!shouldShow) {
+      setCanShow(false);
+      return;
+    }
+
+    setCanShow(false);
+
+    const timer = window.setTimeout(() => {
+      setCanShow(true);
+    }, SIDEBAR_SLIDE_ANIMATION_MS); // Keep in sync with sidebar transition duration.
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [state, isMobile, openMobile]);
+
+  if (!canShow) {
+    return null;
+  }
+
+  return (
+    <div className="pointer-events-none absolute left-4 top-4 z-20">
+      <SidebarTrigger className="pointer-events-auto shadow-md" />
+    </div>
+  );
+};
 
 function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
   const { toggleSidebar } = useSidebar();
@@ -722,5 +760,6 @@ export {
   SidebarRail,
   SidebarSeparator,
   SidebarTrigger,
+  SidebarExpandTrigger,
   useSidebar,
 };
