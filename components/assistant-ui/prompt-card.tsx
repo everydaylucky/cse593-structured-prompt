@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { X, Pencil, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ export function PromptCard({ id, title, content = [], onDelete, onUpdate, isEdit
   const [editTitle, setEditTitle] = useState(title);
   const [editContent, setEditContent] = useState(content.join("\n"));
   const [isSummarizing, setIsSummarizing] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     if (!isEditing) {
@@ -28,6 +29,14 @@ export function PromptCard({ id, title, content = [], onDelete, onUpdate, isEdit
       setEditContent(content.join("\n"));
     }
   }, [title, content, isEditing]);
+
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    textarea.style.height = "auto";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }, [editContent, isEditing]);
 
   const normalizeContent = (text: string) =>
     text
@@ -127,14 +136,16 @@ export function PromptCard({ id, title, content = [], onDelete, onUpdate, isEdit
         <div className="space-y-2">
           <Input
             value={editTitle}
+            placeholder="Untitled Prompt"
             onChange={(e) => setEditTitle(e.target.value)}
             className="text-sm font-semibold"
           />
           <Textarea
+            ref={textareaRef}
             value={editContent}
             onChange={(e) => setEditContent(e.target.value)}
-            rows={5}
-            className="text-sm"
+            rows={1}
+            className="text-sm resize-none"
           />
           <div className="flex flex-wrap gap-2">
             {renderSummarizeButton()}
