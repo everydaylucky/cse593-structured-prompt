@@ -1,42 +1,45 @@
-# CSE593 Structured Prompt App
+# Structify: a Structured Prompt Experiment
 
-基于 [`assistant-ui`](https://github.com/Yonom/assistant-ui) 和 Vercel AI SDK 的结构化 Prompt 实验项目。
+Structify is a structured prompt app built on [`assistant-ui`](https://github.com/Yonom/assistant-ui) and the Vercel AI SDK. A course project for CSE593.
 
-## 环境准备（conda + Node）
+## Environment Setup (conda + Node)
 
-1. 选择并激活一个 conda 环境（先看名字再激活）：
+If you don't already have node.js globally and want to use conda to manage your environments, follow the instructions below.
+
+1. Pick and activate a conda environment (check the name first):
 
 conda env list
-conda activate <你的环境名>
+conda activate <your-env-name>
 
-2. 在该环境里安装 Node.js（自带 npm）：
+2. Install Node.js (with npm) inside that environment:
 
 conda install -c conda-forge nodejs
 
-> 要求 Node.js ≥ 18。
+> Requires Node.js ≥ 18.
 
-## 本地开发
+## Local Development
 
-1. 进入项目目录（下面是我的电脑里的路径）：
+1. Change into the project directory and install dependencies (first run only).
 
-cd "/Users/Shared/baiduyun/00 Code/Projects/CSE593/my-app copy"
-
-2. 安装依赖（第一次运行需要）：
-
+```console
 npm install
+```
 
-3. 配置 OpenAI Key，在项目根目录创建 `.env.local`：
+2. Configure your OpenAI key by creating `.env.local` in the project root. You can find an example in `.env.example`.
 
+```
 OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
 
-4. 启动开发服务器：
+1. Start the dev server.
 
+```console
 npm run dev
+```
 
-然后在浏览器访问 `http://localhost:3000`。
+Then open `http://localhost:3000` in your browser.
 
-## 功能说明
+## Features
 
-- 预置对话历史：从 `data/initial-history.json` 加载，应用启动时直接显示在主对话 `Thread` 中。
-- Prompt Cards 侧边栏：默认卡片和文案定义在  
-  `components/prompt-sidebar/prompt-sidebar.tsx` 的 `prompts` 初始数组中，你可以直接修改这里来调整侧边栏的预设内容。
+- Preloaded chat history: loaded from `data/initial-history.json` and shown immediately in the main `Thread` on startup.
+- Prompt Cards sidebar: default cards and copy live in the `prompts` initial array inside `components/prompt-sidebar/prompt-sidebar.tsx`; edit that array to adjust the sidebar presets.
