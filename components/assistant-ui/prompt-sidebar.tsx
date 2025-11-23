@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, PanelRightClose, PanelRight, ArrowLeft, Loader2 } from "lucide-react";
 import { PromptCard } from "./prompt-card";
 import { cn } from "@/lib/utils";
 import { useAssistantApi } from "@assistant-ui/react";
 import { Button } from "../ui/button";
+import { PROMPT_COLLECT_EVENT, type PromptCollectDetail } from "@/lib/prompt-collector";
 
 interface PromptItem {
   id: string;
@@ -96,6 +97,31 @@ export function PromptSidebar() {
     setPrompts(prevPrompts => prevPrompts.map(p => p.id === id ? { ...p, isEditing } : p));
   };
 
+  useEffect(() => {
+    const handleCollect = (event: Event) => {
+      const detail = (event as CustomEvent<PromptCollectDetail>).detail;
+      if (!detail || detail.content.length === 0) {
+        return;
+      }
+
+      setPrompts(prevPrompts => [
+        {
+          id: `${detail.messageId}-${Date.now()}`,
+          title: detail.title || "Collected prompt",
+          content: detail.content,
+          isEditing: false
+        },
+        ...prevPrompts,
+      ]);
+      setIsOpen(true);
+    };
+
+    window.addEventListener(PROMPT_COLLECT_EVENT, handleCollect);
+    return () => {
+      window.removeEventListener(PROMPT_COLLECT_EVENT, handleCollect);
+    };
+  }, []);
+
   return (
     <>
       <Button
@@ -152,7 +178,8 @@ export function PromptSidebar() {
 
           <Button
             onClick={addPrompt}
-            className="mt-4 flex items-center justify-center rounded-lg border-2 border-dashed border-yellow-400 p-3 hover:bg-yellow-50 dark:hover:bg-yellow-950/20"
+            variant="outline"
+            className="mt-4 flex items-center justify-center rounded-lg border-2 border-dashed border-yellow-400 bg-yellow-50 p-3 text-yellow-700 hover:bg-yellow-100 dark:border-yellow-700 dark:bg-yellow-950/20 dark:text-yellow-200 dark:hover:bg-yellow-900/40"
           >
             <Plus className="size-6 text-yellow-600" />
           </Button>

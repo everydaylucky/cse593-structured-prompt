@@ -5,6 +5,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   CopyIcon,
+  InboxIcon,
   PencilIcon,
   RefreshCwIcon,
   Square,
@@ -17,9 +18,15 @@ import {
   ErrorPrimitive,
   MessagePrimitive,
   ThreadPrimitive,
+  useAssistantState,
 } from "@assistant-ui/react";
 
-import type { FC } from "react";
+import type {
+  ThreadAssistantMessagePart,
+  ThreadUserMessagePart,
+} from "@assistant-ui/react";
+
+import { type FC, useCallback, useMemo } from "react";
 import { LazyMotion, MotionConfig, domAnimation } from "motion/react";
 import * as m from "motion/react-m";
 
@@ -35,6 +42,7 @@ import {
 import { MessageBranchButton } from "@/components/assistant-ui/message-branch-button";
 
 import { cn } from "@/lib/utils";
+import { dispatchPromptCollect } from "@/lib/prompt-collector";
 
 export const Thread: FC = () => {
   return (
@@ -273,6 +281,7 @@ const AssistantActionBar: FC = () => {
       className="aui-assistant-action-bar-root col-start-3 row-start-2 -ml-1 flex gap-1 text-muted-foreground data-floating:absolute data-floating:rounded-md data-floating:border data-floating:bg-background data-floating:p-1 data-floating:shadow-sm"
     >
       <MessageBranchButton />
+      <CollectPromptButton className="aui-assistant-action-collect size-6 p-1.5" />
       <ActionBarPrimitive.Copy asChild>
         <TooltipIconButton tooltip="Copy">
           <MessagePrimitive.If copied>
@@ -324,12 +333,85 @@ const UserActionBar: FC = () => {
       className="aui-user-action-bar-root flex flex-col items-end"
     >
       <MessageBranchButton />
+      <CollectPromptButton className="aui-user-action-collect p-4" />
       <ActionBarPrimitive.Edit asChild>
         <TooltipIconButton tooltip="Edit" className="aui-user-action-edit p-4">
           <PencilIcon />
         </TooltipIconButton>
       </ActionBarPrimitive.Edit>
     </ActionBarPrimitive.Root>
+  );
+};
+
+type CollectPromptButtonProps = {
+  className?: string;
+};
+
+const CollectPromptButton: FC<CollectPromptButtonProps> = ({ className }) => {
+  const message = useAssistantState(({ message }) => message);
+
+  const collectableLines = useMemo(() => {
+    const splitLines = (text: string | undefined) =>
+      (text ?? "")
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+    if (message.role === "user") {
+      return (message.content as ThreadUserMessagePart[])
+        .flatMap((part) => {
+          if (part.type !== "text" || !part.text) {
+            return [];
+          }
+
+          return splitLines(part.text);
+        });
+    }
+
+    if (message.role === "assistant") {
+      return (message.content as ThreadAssistantMessagePart[])
+        .flatMap((part) => {
+          if (part.type === "text" || part.type === "reasoning") {
+            return splitLines(part.text);
+          }
+
+          return [];
+        });
+    }
+
+    return [];
+  }, [message.content, message.role]);
+
+  const canCollect = collectableLines.length > 0;
+
+  const handleCollect = useCallback(() => {
+    if (!canCollect) {
+      return;
+    }
+
+    const title = collectableLines[0]?.slice(0, 80) ?? "Collected prompt";
+
+    dispatchPromptCollect({
+      messageId: message.id,
+      title,
+      content: collectableLines,
+    });
+  }, [canCollect, collectableLines, message.id]);
+
+  if (message.role !== "user" && message.role !== "assistant") {
+    return null;
+  }
+
+  return (
+    <TooltipIconButton
+      tooltip="Collect prompt"
+      aria-label="Collect prompt"
+      onClick={handleCollect}
+      disabled={!canCollect}
+      className={cn("aui-collect-prompt-button", className)}
+    >
+      <InboxIcon className="size-4" />
+    </TooltipIconButton>
   );
 };
 
