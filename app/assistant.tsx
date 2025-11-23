@@ -7,60 +7,12 @@ import { useAISDKRuntime } from "@assistant-ui/react-ai-sdk";
 import rawInitialHistory from "@/data/initial-history.json";
 import { Thread } from "@/components/assistant-ui/thread";
 import {
+  SidebarExpandTrigger,
   SidebarInset,
   SidebarProvider,
-  SidebarTrigger,
-  useSidebar,
 } from "@/components/ui/sidebar";
 import { ThreadListSidebar } from "@/components/assistant-ui/threadlist-sidebar";
-import { PromptSidebar } from "@/components/prompt-sidebar/prompt-sidebar";
-import { Separator } from "@/components/ui/separator";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-
-// Keep in sync with sidebar transition duration.
-const SIDEBAR_SLIDE_ANIMATION_MS = 200;
-
-// Show a sidebar trigger when the sidebar is collapsed or mobile and not open.
-const SidebarExpandTrigger = () => {
-  const { state, isMobile, openMobile } = useSidebar();
-  const [canShow, setCanShow] = useState(false);
-
-  useEffect(() => {
-    const shouldShow = state === "collapsed" || (isMobile && !openMobile);
-
-    if (!shouldShow) {
-      setCanShow(false);
-      return;
-    }
-
-    setCanShow(false);
-
-    const timer = window.setTimeout(() => {
-      setCanShow(true);
-    }, SIDEBAR_SLIDE_ANIMATION_MS); // Keep in sync with sidebar transition duration.
-
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [state, isMobile, openMobile]);
-
-  if (!canShow) {
-    return null;
-  }
-
-  return (
-    <div className="pointer-events-none absolute left-4 top-4 z-20">
-      <SidebarTrigger className="pointer-events-auto shadow-md" />
-    </div>
-  );
-};
+import { PromptSidebar } from "@/components/assistant-ui/prompt-sidebar";
 
 export const Assistant = () => {
   // 1. Stable initial messages
@@ -69,8 +21,8 @@ export const Assistant = () => {
       // Convert complex content to string for Vercel AI SDK
       const content = Array.isArray(msg.content)
         ? msg.content
-            .map((c: any) => (c.type === "text" ? c.text : ""))
-            .join("\n")
+          .map((c: any) => (c.type === "text" ? c.text : ""))
+          .join("\n")
         : (msg.content as string);
 
       return {
