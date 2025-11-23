@@ -127,31 +127,12 @@ export function PromptSidebar() {
       <Button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "fixed top-20 right-4 z-50 rounded-full bg-yellow-400 p-2 shadow-lg hover:bg-yellow-500",
+          "fixed top-5 right-4 z-50 rounded-full bg-yellow-400 p-2 shadow-lg hover:bg-yellow-500",
           isOpen && "right-[320px]"
         )}
       >
         {isOpen ? <PanelRightClose className={toggleIconClass} /> : <PanelRight className={toggleIconClass} />}
       </Button>
-
-      {isOpen && (
-        <Button
-          onClick={sendAllPrompts}
-          disabled={isSending}
-          className={cn(
-            "fixed top-1/2 -translate-y-1/2 z-50 rounded-full bg-yellow-400 p-3 shadow-lg hover:bg-yellow-500 transition-all",
-            "right-[320px]",
-            isSending && "opacity-50 cursor-not-allowed"
-          )}
-          title="Send all prompts"
-        >
-          {isSending ? (
-            <Loader2 className="size-6 animate-spin" />
-          ) : (
-            <ArrowLeft className="size-6" />
-          )}
-        </Button>
-      )}
 
       <div
         className={cn(
@@ -182,6 +163,19 @@ export function PromptSidebar() {
             className="mt-4 flex items-center justify-center rounded-lg border-2 border-dashed border-yellow-400 bg-yellow-50 p-3 text-yellow-700 hover:bg-yellow-100 dark:border-yellow-700 dark:bg-yellow-950/20 dark:text-yellow-200 dark:hover:bg-yellow-900/40"
           >
             <Plus className="size-6 text-yellow-600" />
+          </Button>
+
+          <Button
+            onClick={sendAllPrompts}
+            disabled={isSending}
+            className="mt-4 flex items-center justify-center gap-2 rounded-lg bg-yellow-500 p-3 text-white hover:bg-yellow-600 disabled:opacity-50"
+          >
+            {isSending ? (
+              <Loader2 className="size-5 animate-spin" />
+            ) : (
+              <ArrowLeft className="size-5" />
+            )}
+            <span>{isSending ? "Sending…" : "Send all prompts"}</span>
           </Button>
         </div>
       </div>
