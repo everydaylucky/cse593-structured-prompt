@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Plus, PanelRightClose, PanelRight, ArrowLeft, Loader2 } from "lucide-react";
 import { PromptCard } from "./prompt-card";
 import { cn } from "@/lib/utils";
-import { useThreadRuntime } from "@assistant-ui/react";
+import { useAssistantApi } from "@assistant-ui/react";
+import { Button } from "../ui/button";
 
 interface PromptItem {
   id: string;
@@ -16,7 +17,9 @@ interface PromptItem {
 export function PromptSidebar() {
   const [isOpen, setIsOpen] = useState(true);
   const [isSending, setIsSending] = useState(false);
-  const threadRuntime = useThreadRuntime();
+  const toggleIconClass = "size-5";
+  let api = useAssistantApi();
+  const threadRuntime = api.thread();
   const [prompts, setPrompts] = useState<PromptItem[]>([
     {
       id: "1",
@@ -64,7 +67,7 @@ export function PromptSidebar() {
 
   const sendAllPrompts = async () => {
     setPrompts(prompts.map(p => ({ ...p, isEditing: false })));
-    
+
     let message = "";
     prompts.forEach((prompt, index) => {
       if (prompt.title) {
@@ -95,18 +98,18 @@ export function PromptSidebar() {
 
   return (
     <>
-      <button
+      <Button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           "fixed top-20 right-4 z-50 rounded-full bg-yellow-400 p-2 shadow-lg hover:bg-yellow-500",
-          isOpen && "right-[370px]"
+          isOpen && "right-[320px]"
         )}
       >
-        {isOpen ? <PanelRightClose className="size-5" /> : <PanelRight className="size-5" />}
-      </button>
+        {isOpen ? <PanelRightClose className={toggleIconClass} /> : <PanelRight className={toggleIconClass} />}
+      </Button>
 
       {isOpen && (
-        <button
+        <Button
           onClick={sendAllPrompts}
           disabled={isSending}
           className={cn(
@@ -121,7 +124,7 @@ export function PromptSidebar() {
           ) : (
             <ArrowLeft className="size-6" />
           )}
-        </button>
+        </Button>
       )}
 
       <div
@@ -132,7 +135,6 @@ export function PromptSidebar() {
       >
         <div className="flex h-full flex-col p-4">
           <h2 className="mb-4 text-lg font-semibold">Prompt Cards</h2>
-          
           <div className="flex-1 space-y-4 overflow-y-auto">
             {prompts.map((prompt) => (
               <PromptCard
@@ -148,12 +150,12 @@ export function PromptSidebar() {
             ))}
           </div>
 
-          <button
+          <Button
             onClick={addPrompt}
             className="mt-4 flex items-center justify-center rounded-lg border-2 border-dashed border-yellow-400 p-3 hover:bg-yellow-50 dark:hover:bg-yellow-950/20"
           >
             <Plus className="size-6 text-yellow-600" />
-          </button>
+          </Button>
         </div>
       </div>
     </>
