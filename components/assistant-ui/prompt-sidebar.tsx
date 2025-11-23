@@ -16,7 +16,7 @@ interface PromptItem {
 }
 
 export function PromptSidebar() {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const toggleIconClass = "size-5";
   let api = useAssistantApi();
@@ -24,19 +24,19 @@ export function PromptSidebar() {
   const [prompts, setPrompts] = useState<PromptItem[]>([
     {
       id: "1",
-      title: "Scenario: ...",
-      content: [],
+      title: "Goal",
+      content: ["Stay alive"],
       isEditing: false
     },
     {
       id: "2",
-      title: "Be high EQ",
+      title: "",
       content: [],
       isEditing: false
     },
     {
       id: "3",
-      title: 'Avoid "layoff"',
+      title: "",
       content: [],
       isEditing: false
     },
