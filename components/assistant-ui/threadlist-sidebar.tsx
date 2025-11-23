@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Github, MessagesSquare } from "lucide-react";
+import { createLucideIcon, GitBranch, Github, ListTree, LucideProps, Network } from "lucide-react";
 import Link from "next/link";
 import {
   Sidebar,
@@ -10,8 +10,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ThreadList } from "@/components/assistant-ui/thread-list";
+import { StructifyIcon } from "../logo/structify";
 
 export function ThreadListSidebar({
   ...props
@@ -24,34 +26,35 @@ export function ThreadListSidebar({
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" asChild>
                 <Link
-                  href="https://assistant-ui.com"
+                  href="https://github.com/everydaylucky/cse593-structured-prompt"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   <div className="aui-sidebar-header-icon-wrapper flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                    <MessagesSquare className="aui-sidebar-header-icon size-4" />
+                    <StructifyIcon className="aui-sidebar-header-icon size-4" />
                   </div>
                   <div className="aui-sidebar-header-heading mr-6 flex flex-col gap-0.5 leading-none">
                     <span className="aui-sidebar-header-title font-semibold">
-                      assistant-ui
+                      Structify
                     </span>
                   </div>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
+          <SidebarTrigger className="shrink-0" size="lg" />
         </div>
       </SidebarHeader>
       <SidebarContent className="aui-sidebar-content px-2">
         <ThreadList />
       </SidebarContent>
       <SidebarRail />
-      <SidebarFooter className="aui-sidebar-footer border-t">
+      {/* <SidebarFooter className="aui-sidebar-footer border-t">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link
-                href="https://github.com/assistant-ui/assistant-ui"
+                href="https://github.com/everydaylucky/cse593-structured-prompt"
                 target="_blank"
               >
                 <div className="aui-sidebar-footer-icon-wrapper flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
@@ -67,7 +70,7 @@ export function ThreadListSidebar({
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-      </SidebarFooter>
+      </SidebarFooter> */}
     </Sidebar>
   );
 }

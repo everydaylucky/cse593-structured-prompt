@@ -10,6 +10,7 @@ import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { ThreadListSidebar } from "@/components/assistant-ui/threadlist-sidebar";
 import { PromptSidebar } from "@/components/prompt-sidebar/prompt-sidebar";
@@ -22,6 +23,44 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+
+// Keep in sync with sidebar transition duration.
+const SIDEBAR_SLIDE_ANIMATION_MS = 200;
+
+// Show a sidebar trigger when the sidebar is collapsed or mobile and not open.
+const SidebarExpandTrigger = () => {
+  const { state, isMobile, openMobile } = useSidebar();
+  const [canShow, setCanShow] = useState(false);
+
+  useEffect(() => {
+    const shouldShow = state === "collapsed" || (isMobile && !openMobile);
+
+    if (!shouldShow) {
+      setCanShow(false);
+      return;
+    }
+
+    setCanShow(false);
+
+    const timer = window.setTimeout(() => {
+      setCanShow(true);
+    }, SIDEBAR_SLIDE_ANIMATION_MS); // Keep in sync with sidebar transition duration.
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [state, isMobile, openMobile]);
+
+  if (!canShow) {
+    return null;
+  }
+
+  return (
+    <div className="pointer-events-none absolute left-4 top-4 z-20">
+      <SidebarTrigger className="pointer-events-auto shadow-md" />
+    </div>
+  );
+};
 
 export const Assistant = () => {
   // 1. Stable initial messages
@@ -68,27 +107,7 @@ export const Assistant = () => {
         <div className="flex h-dvh w-full pr-0.5">
           <ThreadListSidebar />
           <SidebarInset>
-            <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-              <SidebarTrigger />
-              <Separator orientation="vertical" className="mr-2 h-4" />
-              <Breadcrumb>
-                <BreadcrumbList>
-                  <BreadcrumbItem className="hidden md:block">
-                    <BreadcrumbLink
-                      href="https://www.assistant-ui.com/docs/getting-started"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Build Your Own ChatGPT UX
-                    </BreadcrumbLink>
-                  </BreadcrumbItem>
-                  <BreadcrumbSeparator className="hidden md:block" />
-                  <BreadcrumbItem>
-                    <BreadcrumbPage>Starter Template</BreadcrumbPage>
-                  </BreadcrumbItem>
-                </BreadcrumbList>
-              </Breadcrumb>
-            </header>
+            <SidebarExpandTrigger />
             <div className="flex-1 overflow-hidden">
               <Thread />
             </div>
