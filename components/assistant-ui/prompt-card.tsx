@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import { X, Pencil, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 interface PromptCardProps {
   id: string;
@@ -72,19 +75,21 @@ export function PromptCard({ id, title, content = [], onDelete, onUpdate, isEdit
   const renderSummarizeButton = (className?: string) => {
     const hasContent = isEditing ? normalizeContent(editContent).length > 0 : content.length > 0;
     return (
-      <button
+      <Button
+        type="button"
+        variant="secondary"
         onClick={(e) => {
           e.stopPropagation();
           handleSummarize();
         }}
         disabled={isSummarizing || !hasContent}
         className={cn(
-          "flex items-center gap-2 rounded bg-yellow-100 px-3 py-1 text-sm font-medium text-yellow-900 hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-yellow-900/30 dark:text-yellow-200 dark:hover:bg-yellow-900/50",
-          className
+          "h-auto bg-yellow-100 px-3 py-1 text-sm font-medium text-yellow-900 hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-yellow-900/30 dark:text-yellow-200 dark:hover:bg-yellow-900/50",
+          className,
         )}
       >
         {isSummarizing ? <Loader2 className="size-4 animate-spin" /> : "Summarize"}
-      </button>
+      </Button>
     );
   };
 
@@ -108,41 +113,46 @@ export function PromptCard({ id, title, content = [], onDelete, onUpdate, isEdit
       "relative rounded-2xl border-2 border-yellow-400 bg-yellow-50 p-4",
       "dark:bg-yellow-950/20 dark:border-yellow-600"
     )}>
-      <button
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
         onClick={() => onDelete?.(id)}
-        className="absolute top-2 right-2 rounded-full p-1 hover:bg-gray-200 dark:hover:bg-gray-700"
+        className="absolute top-2 right-2 z-10 size-7 rounded-full hover:bg-gray-200 dark:bg-background dark:hover:bg-gray-700"
       >
         <X className="size-4" />
-      </button>
+      </Button>
 
       {isEditing ? (
         <div className="space-y-2">
-          <input
-            type="text"
+          <Input
             value={editTitle}
             onChange={(e) => setEditTitle(e.target.value)}
-            className="w-full rounded border px-2 py-1 text-sm font-semibold"
+            className="text-sm font-semibold"
           />
-          <textarea
+          <Textarea
             value={editContent}
             onChange={(e) => setEditContent(e.target.value)}
-            className="w-full rounded border px-2 py-1 text-sm"
             rows={5}
+            className="text-sm"
           />
           <div className="flex flex-wrap gap-2">
             {renderSummarizeButton()}
-            <button
+            <Button
+              type="button"
               onClick={handleSave}
-              className="rounded bg-yellow-400 px-3 py-1 text-sm hover:bg-yellow-500"
+              className="h-auto rounded bg-yellow-400 px-3 py-1 text-sm text-yellow-950 hover:bg-yellow-500"
             >
               Save
-            </button>
-            <button
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
               onClick={() => onEditingChange?.(false)}
-              className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300"
+              className="h-auto rounded bg-gray-200 px-3 py-1 text-sm text-gray-900 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
@@ -162,15 +172,18 @@ export function PromptCard({ id, title, content = [], onDelete, onUpdate, isEdit
           </div>
           <div className="mt-3 flex items-center justify-between">
             {renderSummarizeButton("px-3")}
-            <button
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
               onClick={(e) => {
                 e.stopPropagation();
                 onEditingChange?.(true);
               }}
-              className="rounded p-1 hover:bg-yellow-200 dark:hover:bg-yellow-900"
+              className="size-8 rounded hover:bg-yellow-200 dark:hover:bg-yellow-900"
             >
               <Pencil className="size-4 text-yellow-600" />
-            </button>
+            </Button>
           </div>
         </div>
       )}
