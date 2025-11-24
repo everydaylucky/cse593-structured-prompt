@@ -19,7 +19,7 @@ export function PromptSidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const toggleIconClass = "size-5";
-  let api = useAssistantApi();
+  const api = useAssistantApi();
   const threadRuntime = api.thread();
   const [prompts, setPrompts] = useState<PromptItem[]>([
     {
@@ -30,20 +30,20 @@ export function PromptSidebar() {
     },
     {
       id: "2",
-      title: "",
-      content: [],
+      title: "Restriction",
+      content: ["Be kind", "Be thoughtful", "Not awkward", "Not condescending", "..."],
       isEditing: false
     },
     {
       id: "3",
-      title: "",
+      title: "Length",
       content: [],
       isEditing: false
     },
     {
       id: "4",
-      title: "",
-      content: ["Be kind", "Be thoughtful", "Not awkward", "Not condescending", "..."],
+      title: "Tone",
+      content: [],
       isEditing: false
     }
   ]);
