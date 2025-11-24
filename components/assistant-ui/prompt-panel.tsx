@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef, type ComponentProps } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  type ComponentProps,
+  type MouseEvent as ReactMouseEvent,
+  type TouchEvent as ReactTouchEvent,
+} from "react";
 import { Plus, PanelRightClose, PanelRight, ArrowLeft, Loader2 } from "lucide-react";
 import { PromptCard } from "./prompt-card";
 import { cn } from "@/lib/utils";
@@ -21,14 +28,14 @@ interface PromptItem {
   isEditing?: boolean;
 }
 
-const PromptSidebarTrigger = ({
+const PromptPanelTrigger = ({
   onClick,
   className,
   ...props
 }: ComponentProps<typeof Button>) => (
   <Button
-    data-sidebar="trigger"
-    data-slot="sidebar-trigger"
+    data-panel="trigger"
+    data-slot="panel-trigger"
     variant="ghost"
     size="icon"
     className={cn("size-7", className)}
@@ -39,13 +46,20 @@ const PromptSidebarTrigger = ({
     {...props}
   >
     <PanelRightClose className="size-4" />
-    <span className="sr-only">Close prompt sidebar</span>
+    <span className="sr-only">Close prompt panel</span>
   </Button>
 );
 
-const PROMPT_SIDEBAR_SLIDE_DURATION_MS = 300;
+const PANEL_SLIDE_DURATION_MS = 300;
+const PANEL_FLOATING = false;
+const PANEL_DEFAULT_WIDTH = 320;
+const PANEL_MIN_WIDTH = 260;
+const PANEL_MAX_WIDTH = 500;
 
-const PromptSidebarExpandTrigger = ({
+const clampPromptPanelWidth = (value: number) =>
+  Math.min(PANEL_MAX_WIDTH, Math.max(PANEL_MIN_WIDTH, value));
+
+const PanelExpandTrigger = ({
   isOpen,
   onOpen,
 }: {
@@ -79,7 +93,7 @@ const PromptSidebarExpandTrigger = ({
       fadeAnimationFrame.current = window.requestAnimationFrame(() => {
         setIsVisible(true);
       });
-    }, PROMPT_SIDEBAR_SLIDE_DURATION_MS);
+    }, PANEL_SLIDE_DURATION_MS);
 
     return () => {
       if (delayTimer.current !== null) {
@@ -108,7 +122,7 @@ const PromptSidebarExpandTrigger = ({
         size="icon"
         variant="ghost"
         onClick={onOpen}
-        aria-label="Open prompt sidebar"
+        aria-label="Open prompt panel"
         className="pointer-events-auto shadow-md"
       >
         <PanelRight />
@@ -117,9 +131,10 @@ const PromptSidebarExpandTrigger = ({
   );
 };
 
-export function PromptSidebar() {
+export function PromptPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [panelWidth, setPanelWidth] = useState(PANEL_DEFAULT_WIDTH);
   const api = useAssistantApi();
   const threadRuntime = api.thread();
   const [prompts, setPrompts] = useState<PromptItem[]>([
@@ -223,23 +238,113 @@ export function PromptSidebar() {
     };
   }, []);
 
+  const startResize = (clientX: number | null) => {
+    if (clientX === null) {
+      return;
+    }
+
+    const startX = clientX;
+    const startWidth = panelWidth;
+    const initialCursor = document.body.style.cursor;
+    const initialUserSelect = document.body.style.userSelect;
+
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    const updateWidth = (nextClientX: number) => {
+      const delta = startX - nextClientX;
+      setPanelWidth(clampPromptPanelWidth(startWidth + delta));
+    };
+
+    const handleMouseMove = (event: MouseEvent) => {
+      event.preventDefault();
+      updateWidth(event.clientX);
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      if (event.touches.length === 0) {
+        return;
+      }
+      event.preventDefault();
+      updateWidth(event.touches[0].clientX);
+    };
+
+    const cleanup = () => {
+      document.body.style.cursor = initialCursor;
+      document.body.style.userSelect = initialUserSelect;
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
+      window.removeEventListener("touchcancel", handleTouchEnd);
+    };
+
+    const handleMouseUp = () => {
+      cleanup();
+    };
+
+    const handleTouchEnd = () => {
+      cleanup();
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("touchmove", handleTouchMove, { passive: false });
+    window.addEventListener("touchend", handleTouchEnd);
+    window.addEventListener("touchcancel", handleTouchEnd);
+  };
+
+  const handleResizeMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (event.button !== 0) {
+      return;
+    }
+    event.preventDefault();
+    startResize(event.clientX);
+  };
+
+  const handleResizeTouchStart = (event: ReactTouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0];
+    if (!touch) {
+      return;
+    }
+    event.preventDefault();
+    startResize(touch.clientX);
+  };
+
   return (
     <>
-      <PromptSidebarExpandTrigger
+      <PanelExpandTrigger
         isOpen={isOpen}
         onOpen={() => setIsOpen(true)}
       />
       <div
+        style={{ width: panelWidth }}
         className={cn(
-          "fixed top-0 right-0 h-full w-80 border-l bg-background transition-transform duration-300",
-          !isOpen && "translate-x-full"
+          PANEL_FLOATING
+            ? "fixed top-0 right-0 h-full border-l bg-background transition-transform duration-300"
+            : "relative h-full border-l bg-background",
+          !isOpen && (PANEL_FLOATING ? "translate-x-full" : "hidden")
         )}
       >
+        {isOpen && (
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-valuemin={PANEL_MIN_WIDTH}
+            aria-valuemax={PANEL_MAX_WIDTH}
+            aria-valuenow={panelWidth}
+            className="absolute left-0 top-0 z-10 h-full w-2 cursor-col-resize touch-none"
+            onMouseDown={handleResizeMouseDown}
+            onTouchStart={handleResizeTouchStart}
+          >
+            <span className="absolute left-1/2 top-1/2 h-10 w-px -translate-x-1/2 -translate-y-1/2 rounded bg-border" />
+          </div>
+        )}
         <div className="flex h-full flex-col px-4 pb-4 pt-2">
           <SidebarHeader className="flex items-center gap-2 px-0 pb-4">
             <SidebarMenu className="flex-row items-center gap-2">
               <SidebarMenuItem className="w-auto">
-                <PromptSidebarTrigger onClick={() => setIsOpen(false)} />
+                <PromptPanelTrigger onClick={() => setIsOpen(false)} />
               </SidebarMenuItem>
               <SidebarMenuItem className="w-auto">
                 <SidebarMenuButton
