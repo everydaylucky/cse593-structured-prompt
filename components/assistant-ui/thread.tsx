@@ -8,6 +8,7 @@ import {
   InboxIcon,
   PencilIcon,
   RefreshCwIcon,
+  RotateCcwIcon,
   Square,
 } from "lucide-react";
 
@@ -18,11 +19,14 @@ import {
   ErrorPrimitive,
   MessagePrimitive,
   ThreadPrimitive,
+  useAssistantApi,
   useAssistantState,
 } from "@assistant-ui/react";
 
 import type {
   ThreadAssistantMessagePart,
+  ThreadMessage,
+  ThreadMessageLike,
   ThreadUserMessagePart,
 } from "@assistant-ui/react";
 
@@ -280,6 +284,7 @@ const AssistantActionBar: FC = () => {
       className="aui-assistant-action-bar-root col-start-3 row-start-2 -ml-1 flex gap-1 text-muted-foreground data-floating:absolute data-floating:rounded-md data-floating:border data-floating:bg-background data-floating:p-1 data-floating:shadow-sm"
     >
       <CollectPromptButton className="aui-assistant-action-collect size-6 p-1.5" />
+      <RewindButton />
       <ActionBarPrimitive.Copy asChild>
         <TooltipIconButton tooltip="Copy">
           <MessagePrimitive.If copied>
@@ -408,6 +413,185 @@ const CollectPromptButton: FC<CollectPromptButtonProps> = ({ className }) => {
       className={cn("aui-collect-prompt-button", className)}
     >
       <InboxIcon className="size-4" />
+    </TooltipIconButton>
+  );
+};
+
+type AssistantMessageState = Extract<ThreadMessage, { role: "assistant" }>;
+type UserMessageState = Extract<ThreadMessage, { role: "user" }>;
+
+const splitMessageLines = (text?: string) =>
+  (text ?? "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+const extractUserLines = (message: UserMessageState) => {
+  return message.content.flatMap((part: ThreadUserMessagePart) => {
+    if (part.type !== "text" || !part.text) {
+      return [];
+    }
+
+    return splitMessageLines(part.text);
+  });
+};
+
+const extractAssistantLines = (message: AssistantMessageState) => {
+  return message.content.flatMap((part: ThreadAssistantMessagePart) => {
+    if ((part.type === "text" || part.type === "reasoning") && part.text) {
+      return splitMessageLines(part.text);
+    }
+
+    return [];
+  });
+};
+
+const buildPromptContent = (userLines: string[], assistantLines: string[]) => {
+  const userSection = userLines.length > 0 ? userLines : ["(no text)"];
+  const assistantSection =
+    assistantLines.length > 0 ? assistantLines : ["(no text)"];
+
+  return ["User:", ...userSection, "Assistant:", ...assistantSection];
+};
+
+const toThreadMessageLike = (message: ThreadMessage): ThreadMessageLike => {
+  const base: ThreadMessageLike = {
+    id: message.id,
+    createdAt: message.createdAt,
+    role: message.role,
+    content: message.content,
+    metadata: message.metadata,
+  };
+
+  if (message.role === "assistant") {
+    return {
+      ...base,
+      role: "assistant",
+      status: message.status,
+    };
+  }
+
+  if (message.role === "user") {
+    return {
+      ...base,
+      role: "user",
+      attachments: message.attachments,
+    };
+  }
+
+  return base;
+};
+
+type ConversationRound = {
+  user: UserMessageState;
+  assistant: AssistantMessageState;
+};
+
+const getLastRound = (
+  messages: readonly ThreadMessage[],
+): ConversationRound | null => {
+  if (messages.length < 2) {
+    return null;
+  }
+
+  const assistant = messages[messages.length - 1];
+  const user = messages[messages.length - 2];
+
+  if (!assistant || !user) {
+    return null;
+  }
+
+  if (assistant.role !== "assistant" || user.role !== "user") {
+    return null;
+  }
+
+  return {
+    assistant,
+    user,
+  };
+};
+
+const RewindButton: FC = () => {
+  const api = useAssistantApi();
+  const message = useAssistantState(({ message }) => message);
+
+  const isRunning = useAssistantState(({ thread }) => thread.isRunning);
+
+  const lastAssistantId = useAssistantState(({ thread }) => {
+    const lastAssistant =
+      thread.messages.length > 0
+        ? thread.messages[thread.messages.length - 1]
+        : undefined;
+
+    return lastAssistant?.role === "assistant" ? lastAssistant.id : undefined;
+  });
+
+  const hasUserBefore = useAssistantState(({ thread }) => {
+    const { messages } = thread;
+    const lastAssistant =
+      messages.length > 0 ? messages[messages.length - 1] : undefined;
+    const previous =
+      messages.length > 1 ? messages[messages.length - 2] : undefined;
+
+    return Boolean(
+      lastAssistant?.role === "assistant" && previous?.role === "user",
+    );
+  });
+
+  const isAssistantMessage = message.role === "assistant";
+
+  const canRewind =
+    isAssistantMessage &&
+    message.isLast &&
+    !isRunning &&
+    hasUserBefore &&
+    lastAssistantId === message.id;
+
+  const handleRewind = useCallback(() => {
+    if (!canRewind || !isAssistantMessage) {
+      return;
+    }
+
+    const threadRuntime = api.thread();
+    const { messages } = threadRuntime.getState();
+    const round = getLastRound(messages);
+
+    if (!round || round.assistant.id !== message.id) {
+      return;
+    }
+
+    const userLines = extractUserLines(round.user);
+    const assistantLines = extractAssistantLines(round.assistant);
+    const promptContent = buildPromptContent(userLines, assistantLines);
+    const title =
+      userLines[0]?.slice(0, 80) ??
+      assistantLines[0]?.slice(0, 80) ??
+      "Recent conversation";
+
+    dispatchPromptCollect({
+      messageId: round.assistant.id,
+      title,
+      content: promptContent,
+    });
+
+    const preservedMessages = messages.slice(0, -2).map(toThreadMessageLike);
+
+    threadRuntime.reset(preservedMessages);
+  }, [api, canRewind, isAssistantMessage, message.id]);
+
+  if (!isAssistantMessage) {
+    return null;
+  }
+
+  return (
+    <TooltipIconButton
+      tooltip="Rewind last round"
+      aria-label="Rewind last round"
+      className="aui-assistant-action-rewind size-6 p-1.5"
+      onClick={handleRewind}
+      disabled={!canRewind}
+    >
+      <RotateCcwIcon />
     </TooltipIconButton>
   );
 };
