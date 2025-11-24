@@ -1,11 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, type ComponentProps } from "react";
 import { Plus, PanelRightClose, PanelRight, ArrowLeft, Loader2 } from "lucide-react";
 import { PromptCard } from "./prompt-card";
 import { cn } from "@/lib/utils";
 import { useAssistantApi } from "@assistant-ui/react";
 import { Button } from "../ui/button";
+import {
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "../ui/sidebar";
 import { PROMPT_COLLECT_EVENT, type PromptCollectDetail } from "@/lib/prompt-collector";
 
 interface PromptItem {
@@ -15,10 +21,105 @@ interface PromptItem {
   isEditing?: boolean;
 }
 
+const PromptSidebarTrigger = ({
+  onClick,
+  className,
+  ...props
+}: ComponentProps<typeof Button>) => (
+  <Button
+    data-sidebar="trigger"
+    data-slot="sidebar-trigger"
+    variant="ghost"
+    size="icon"
+    className={cn("size-7", className)}
+    onClick={(event) => {
+      event.preventDefault();
+      onClick?.(event);
+    }}
+    {...props}
+  >
+    <PanelRightClose className="size-4" />
+    <span className="sr-only">Close prompt sidebar</span>
+  </Button>
+);
+
+const PROMPT_SIDEBAR_SLIDE_DURATION_MS = 300;
+
+const PromptSidebarExpandTrigger = ({
+  isOpen,
+  onOpen,
+}: {
+  isOpen: boolean;
+  onOpen: () => void;
+}) => {
+  const [canShow, setCanShow] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const fadeAnimationFrame = useRef<number | null>(null);
+  const delayTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setCanShow(false);
+      setIsVisible(false);
+      if (fadeAnimationFrame.current !== null) {
+        window.cancelAnimationFrame(fadeAnimationFrame.current);
+        fadeAnimationFrame.current = null;
+      }
+      if (delayTimer.current !== null) {
+        window.clearTimeout(delayTimer.current);
+        delayTimer.current = null;
+      }
+      return;
+    }
+
+    setCanShow(false);
+    setIsVisible(false);
+    delayTimer.current = window.setTimeout(() => {
+      setCanShow(true);
+      fadeAnimationFrame.current = window.requestAnimationFrame(() => {
+        setIsVisible(true);
+      });
+    }, PROMPT_SIDEBAR_SLIDE_DURATION_MS);
+
+    return () => {
+      if (delayTimer.current !== null) {
+        window.clearTimeout(delayTimer.current);
+        delayTimer.current = null;
+      }
+      if (fadeAnimationFrame.current !== null) {
+        window.cancelAnimationFrame(fadeAnimationFrame.current);
+        fadeAnimationFrame.current = null;
+      }
+    };
+  }, [isOpen]);
+
+  if (isOpen || !canShow) {
+    return null;
+  }
+
+  return (
+    <div
+      className={cn(
+        "pointer-events-none fixed top-5 right-9 z-50 opacity-0 transition-opacity duration-300",
+        isVisible && "opacity-100",
+      )}
+    >
+      <Button
+        size="icon"
+        variant="ghost"
+        onClick={onOpen}
+        aria-label="Open prompt sidebar"
+        className="pointer-events-auto shadow-md"
+      >
+        <PanelRight />
+      </Button>
+    </div>
+  );
+};
+
 export function PromptSidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const toggleIconClass = "size-5";
   const api = useAssistantApi();
   const threadRuntime = api.thread();
   const [prompts, setPrompts] = useState<PromptItem[]>([
@@ -124,24 +225,33 @@ export function PromptSidebar() {
 
   return (
     <>
-      <Button
-        onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          "fixed top-5 right-4 z-50 rounded-full bg-yellow-400 p-2 shadow-lg hover:bg-yellow-500",
-          isOpen && "right-[320px]"
-        )}
-      >
-        {isOpen ? <PanelRightClose className={toggleIconClass} /> : <PanelRight className={toggleIconClass} />}
-      </Button>
-
+      <PromptSidebarExpandTrigger
+        isOpen={isOpen}
+        onOpen={() => setIsOpen(true)}
+      />
       <div
         className={cn(
           "fixed top-0 right-0 h-full w-80 border-l bg-background transition-transform duration-300",
           !isOpen && "translate-x-full"
         )}
       >
-        <div className="flex h-full flex-col p-4">
-          <h2 className="mb-4 text-lg font-semibold">Prompt Cards</h2>
+        <div className="flex h-full flex-col px-4 pb-4 pt-2">
+          <SidebarHeader className="flex items-center gap-2 px-0 pb-4">
+            <SidebarMenu className="flex-row items-center gap-2">
+              <SidebarMenuItem className="w-auto">
+                <PromptSidebarTrigger onClick={() => setIsOpen(false)} />
+              </SidebarMenuItem>
+              <SidebarMenuItem className="w-auto">
+                <SidebarMenuButton
+                  asChild
+                  size="lg"
+                  className="w-auto justify-start px-0 font-semibold"
+                >
+                  <span className="rounded-md px-3 py-1 text-xl">Prompt Cards</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarHeader>
           <div className="flex-1 space-y-4 overflow-y-auto">
             {prompts.map((prompt) => (
               <PromptCard
