@@ -5,7 +5,7 @@
       "content": [
         {
           "type": "text",
-          "text": "Scenario: Introduce the product vision to a new stakeholder.\nGoal: Provide a concise overview and invite questions."
+          "text": "Scenario: Introduce the product vision to a new stakeholder.\nGoal: Provide a concise overview and invite questions.\nRestrictions:\n  - Be warm and friendly\n  - Be informative"
         }
       ]
     },
