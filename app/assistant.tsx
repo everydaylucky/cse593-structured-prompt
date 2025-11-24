@@ -13,7 +13,7 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar";
 import { ThreadListSidebar } from "@/components/assistant-ui/threadlist-sidebar";
-import { PromptSidebar } from "@/components/assistant-ui/prompt-sidebar";
+import { PromptPanel } from "@/components/assistant-ui/prompt-panel";
 
 type InitialHistoryTextPart = {
   type: "text";
@@ -102,7 +102,7 @@ export const Assistant = () => {
               <Thread />
             </div>
           </SidebarInset>
-          <PromptSidebar />
+          <PromptPanel />
         </div>
       </SidebarProvider>
     </AssistantRuntimeProvider>
