@@ -29,37 +29,49 @@ interface PromptItem {
 const PANEL_FLOATING = false;
 const PANEL_DEFAULT_WIDTH = 320;
 const PANEL_MIN_WIDTH = 260;
-const PANEL_MAX_WIDTH = 500;
+const PANEL_MAX_WIDTH_RATIO = 2 / 3;
+const PANEL_MAX_WIDTH_FALLBACK = 500;
+
+const getPanelMaxWidth = () =>
+  typeof window === "undefined"
+    ? PANEL_MAX_WIDTH_FALLBACK
+    : Math.round(window.innerWidth * PANEL_MAX_WIDTH_RATIO);
+
+const clampPanelWidth = (value: number, maxWidth: number) =>
+  Math.min(Math.max(value, PANEL_MIN_WIDTH), maxWidth);
 
 export function PromptPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const [panelWidth, setPanelWidth] = useState(PANEL_DEFAULT_WIDTH);
+  const [panelMaxWidth, setPanelMaxWidth] = useState(getPanelMaxWidth);
+  const [panelWidth, setPanelWidth] = useState(() =>
+    clampPanelWidth(PANEL_DEFAULT_WIDTH, panelMaxWidth),
+  );
   const api = useAssistantApi();
   const threadRuntime = api.thread();
   const [prompts, setPrompts] = useState<PromptItem[]>([
     {
       id: "1",
       title: "Goal",
-      content: ["Stay alive"],
+      content: ["Write a letter to your friend who recently lost their cat"],
       isEditing: false
     },
     {
       id: "2",
       title: "Restriction",
-      content: ["Be kind", "Be thoughtful", "Not awkward", "Not condescending", "..."],
+      content: ["Be kind", "Be thoughtful", "Not awkward", "Not condescending"],
       isEditing: false
     },
     {
       id: "3",
       title: "Length",
-      content: [],
+      content: ["~200 words"],
       isEditing: false
     },
     {
       id: "4",
       title: "Tone",
-      content: [],
+      content: ["Grave", "Sincere"],
       isEditing: false
     }
   ]);
@@ -114,6 +126,31 @@ export function PromptPanel() {
   };
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const handleResize = () => {
+      setPanelMaxWidth((prevMaxWidth) => {
+        const nextMaxWidth = getPanelMaxWidth();
+        if (nextMaxWidth === prevMaxWidth) {
+          return prevMaxWidth;
+        }
+        setPanelWidth((prevWidth) =>
+          clampPanelWidth(prevWidth, nextMaxWidth),
+        );
+        return nextMaxWidth;
+      });
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  useEffect(() => {
     const handleCollect = (event: Event) => {
       const detail = (event as CustomEvent<PromptCollectDetail>).detail;
       if (!detail || detail.content.length === 0) {
@@ -149,8 +186,10 @@ export function PromptPanel() {
           open={isOpen}
           width={panelWidth}
           minWidth={PANEL_MIN_WIDTH}
-          maxWidth={PANEL_MAX_WIDTH}
-          onResize={setPanelWidth}
+          maxWidth={panelMaxWidth}
+          onResize={(nextWidth) =>
+            setPanelWidth(clampPanelWidth(nextWidth, panelMaxWidth))
+          }
         />
         <div className="flex h-full flex-col px-4 pb-4 pt-2">
           <SidebarHeader className="flex items-center gap-2 px-0 pb-4">
