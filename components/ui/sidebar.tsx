@@ -286,23 +286,46 @@ function SidebarTrigger({
 function SidebarExpandTrigger() {
   const { state, isMobile, openMobile } = useSidebar();
   const [canShow, setCanShow] = React.useState(false);
+  const [isVisible, setIsVisible] = React.useState(false);
+  const fadeAnimationFrame = React.useRef<number | null>(null);
+  const delayTimer = React.useRef<number | null>(null);
 
   React.useEffect(() => {
     const shouldShow = state === "collapsed" || (isMobile && !openMobile);
 
     if (!shouldShow) {
       setCanShow(false);
+      setIsVisible(false);
+      if (delayTimer.current !== null) {
+        window.clearTimeout(delayTimer.current);
+        delayTimer.current = null;
+      }
+      if (fadeAnimationFrame.current !== null) {
+        window.cancelAnimationFrame(fadeAnimationFrame.current);
+        fadeAnimationFrame.current = null;
+      }
       return;
     }
 
     setCanShow(false);
+    setIsVisible(false);
 
-    const timer = window.setTimeout(() => {
+    delayTimer.current = window.setTimeout(() => {
       setCanShow(true);
+      fadeAnimationFrame.current = window.requestAnimationFrame(() => {
+        setIsVisible(true);
+      });
     }, SIDEBAR_SLIDE_ANIMATION_MS); // Keep in sync with sidebar transition duration.
 
     return () => {
-      window.clearTimeout(timer);
+      if (delayTimer.current !== null) {
+        window.clearTimeout(delayTimer.current);
+        delayTimer.current = null;
+      }
+      if (fadeAnimationFrame.current !== null) {
+        window.cancelAnimationFrame(fadeAnimationFrame.current);
+        fadeAnimationFrame.current = null;
+      }
     };
   }, [state, isMobile, openMobile]);
 
@@ -311,7 +334,12 @@ function SidebarExpandTrigger() {
   }
 
   return (
-    <div className="pointer-events-none absolute left-4 top-4 z-20">
+    <div
+      className={cn(
+        "pointer-events-none absolute left-4 top-4 z-20 opacity-0 transition-opacity duration-300",
+        isVisible && "opacity-100",
+      )}
+    >
       <SidebarTrigger className="pointer-events-auto shadow-md" />
     </div>
   );
