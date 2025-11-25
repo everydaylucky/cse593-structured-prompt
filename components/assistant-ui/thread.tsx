@@ -6,7 +6,9 @@ import {
   ChevronRightIcon,
   CopyIcon,
   InboxIcon,
+  Loader2Icon,
   PencilIcon,
+  PlayIcon,
   RefreshCwIcon,
   RotateCcwIcon,
   Square,
@@ -46,7 +48,7 @@ import {
 
 import { cn } from "@/lib/utils";
 import { dispatchPromptCollect } from "@/lib/prompt-collector";
-
+import { useOptionalCinematicContext } from "@/context/cinematic-context";
 export const Thread: FC = () => {
   return (
     <LazyMotion features={domAnimation}>
@@ -205,6 +207,7 @@ const ComposerAction: FC = () => {
   return (
     <div className="aui-composer-action-wrapper relative mx-1 mt-2 mb-2 flex items-center justify-between">
       <ComposerAddAttachment />
+      <CinematicAdvanceButton />
 
       <ThreadPrimitive.If running={false}>
         <ComposerPrimitive.Send asChild>
@@ -236,6 +239,46 @@ const ComposerAction: FC = () => {
         </ComposerPrimitive.Cancel>
       </ThreadPrimitive.If>
     </div>
+  );
+};
+
+const CinematicAdvanceButton: FC = () => {
+  const cinematic = useOptionalCinematicContext();
+
+  if (!cinematic) {
+    return null;
+  }
+
+  const {
+    hasNextPrompt,
+    isSendingPrompt,
+    sendNextPrompt,
+    nextPromptLabel,
+  } = cinematic;
+
+  if (!hasNextPrompt && !isSendingPrompt) {
+    return null;
+  }
+
+  const label =
+    nextPromptLabel ?? (hasNextPrompt ? "Play scripted prompt" : "Waiting…");
+
+  return (
+    <Button
+      type="button"
+      variant="secondary"
+      size="sm"
+      className="aui-composer-cinematic-button mr-auto ml-2 flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium"
+      disabled={!hasNextPrompt || isSendingPrompt}
+      onClick={sendNextPrompt}
+    >
+      {isSendingPrompt ? (
+        <Loader2Icon className="mr-1 size-4 animate-spin" />
+      ) : (
+        <PlayIcon className="mr-1 size-4" />
+      )}
+      {isSendingPrompt ? "Sending…" : label}
+    </Button>
   );
 };
 
