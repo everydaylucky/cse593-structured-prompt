@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
 
+const SUMMARIZE_MODEL = openai("gpt-4o-mini");
+
 interface SummarizeRequest {
   title?: string;
   content?: string[];
@@ -26,7 +28,7 @@ export async function POST(req: Request) {
     ].join(" ");
 
     const { text } = await generateText({
-      model: openai("gpt-4o-mini"),
+      model: SUMMARIZE_MODEL,
       prompt: `${summaryPrompt}\n\nTitle: ${title || "Untitled"}\nContent:\n${joinedContent}`
     });
 
