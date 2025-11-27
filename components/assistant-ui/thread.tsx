@@ -25,6 +25,7 @@ import {
   useAssistantApi,
   useAssistantState,
 } from "@assistant-ui/react";
+import { ComposerWithMention } from "./composer-with-mention";
 
 import type {
   ThreadAssistantMessagePart,
@@ -49,6 +50,7 @@ import {
 import { cn } from "@/lib/utils";
 import { dispatchPromptCollect } from "@/lib/prompt-collector";
 import { useOptionalCinematicContext } from "@/context/cinematic-context";
+import { ThreadHeader } from "./thread-header";
 type ThreadProps = {
   structifyFeature?: boolean;
   userStudyMode?: boolean;
@@ -72,6 +74,7 @@ export const Thread: FC<ThreadProps> = ({
               ["--thread-max-width" as string]: "44rem",
             }}
           >
+            <ThreadHeader />
             <ThreadPrimitive.Viewport className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll px-4">
               <ThreadPrimitive.If empty>
                 <ThreadWelcome userStudyMode={userStudyMode} />
@@ -148,13 +151,7 @@ const Composer: FC = () => {
       <ThreadScrollToBottom />
       <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col rounded-3xl border border-border bg-muted px-1 pt-2 shadow-[0_9px_9px_0px_rgba(0,0,0,0.01),0_2px_5px_0px_rgba(0,0,0,0.06)] dark:border-muted-foreground/15">
         <ComposerAttachments />
-        <ComposerPrimitive.Input
-          placeholder="Send a message..."
-          className="aui-composer-input mb-1 max-h-32 min-h-16 w-full resize-none bg-transparent px-3.5 pt-1.5 pb-3 text-base outline-none placeholder:text-muted-foreground focus:outline-primary"
-          rows={1}
-          autoFocus
-          aria-label="Message input"
-        />
+        <ComposerWithMention />
         <ComposerAction />
       </ComposerPrimitive.Root>
     </div>

@@ -20,6 +20,7 @@
     "tailwindStylesheet": "app/globals.css"
   },
   "dependencies": {
+    "@ai-sdk/google": "^2.0.43",
     "@ai-sdk/openai": "^2.0.46",
     "@assistant-ui/react": "^0.11.28",
     "@assistant-ui/react-ai-sdk": "^1.1.5",
@@ -27,6 +28,7 @@
     "@opennextjs/cloudflare": "^1.13.1",
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tooltip": "^1.2.8",

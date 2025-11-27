@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Plus, ArrowLeft, Loader2 } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Plus, ArrowLeft, Loader2, BookOpen, Download, Upload, Trash2, ChevronDown, Pencil } from "lucide-react";
 import { PromptCard } from "./prompt-card";
 import type { SummarySnapshot } from "./prompt-card";
 import { useAssistantApi } from "@assistant-ui/react";
@@ -18,21 +18,36 @@ import {
   PanelExpandTrigger,
   PanelResizer,
 } from "../ui/panel";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 import { PROMPT_COLLECT_EVENT, type PromptCollectDetail } from "@/lib/prompt-collector";
 import { useIsMobile } from "@/hooks/use-mobile";
 import initialPrompts from "@/data/initial.json";
+import {
+  type PromptItem,
+  type PromptCollection,
+  getCollections,
+  getCurrentCollectionId,
+  setCurrentCollectionId,
+  createCollection,
+  getCollection,
+  updateCollection,
+  addCollection,
+  deleteCollection,
+  exportCollection,
+  importCollection,
+  exportAllCollections,
+  importAllCollections,
+} from "@/lib/prompt-storage";
 
 interface PromptPanelProps {
   onWidthChange?: (width: number) => void;
-}
-
-interface PromptItem {
-  id: string;
-  title: string;
-  content: string[];
-  isEditing?: boolean;
-  isIncluded: boolean;
-  summarySnapshot?: SummarySnapshot;
 }
 
 const PANEL_FLOATING = true;
@@ -67,7 +82,64 @@ export function PromptPanel(props: PromptPanelProps = {}) {
   });
   const api = useAssistantApi();
   const threadRuntime = api.thread();
-  const [prompts, setPrompts] = useState<PromptItem[]>(() => initialPrompts as PromptItem[]);
+  
+  const [collections, setCollections] = useState<PromptCollection[]>(() => {
+    const stored = getCollections();
+    if (stored.length === 0) {
+      const defaultCollection = createCollection("Default", initialPrompts as PromptItem[]);
+      addCollection(defaultCollection);
+      setCurrentCollectionId(defaultCollection.id);
+      return [defaultCollection];
+    }
+    return stored;
+  });
+  
+  const [currentCollectionId, setCurrentCollectionIdState] = useState<string | null>(() => {
+    const storedId = getCurrentCollectionId();
+    if (storedId && getCollection(storedId)) {
+      return storedId;
+    }
+    const firstId = collections.length > 0 ? collections[0].id : null;
+    if (firstId) {
+      setCurrentCollectionId(firstId);
+    }
+    return firstId;
+  });
+  
+  const currentCollection = currentCollectionId ? getCollection(currentCollectionId) : null;
+  const [prompts, setPrompts] = useState<PromptItem[]>(() => 
+    currentCollection?.prompts ?? (initialPrompts as PromptItem[])
+  );
+  
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const saveCurrentCollection = useCallback(() => {
+    if (!currentCollectionId) return;
+    
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    saveTimeoutRef.current = setTimeout(() => {
+      updateCollection(currentCollectionId, { prompts });
+      setCollections(getCollections());
+    }, 300);
+  }, [currentCollectionId, prompts]);
+
+  useEffect(() => {
+    saveCurrentCollection();
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [prompts, saveCurrentCollection]);
+
+  useEffect(() => {
+    if (currentCollectionId && currentCollection) {
+      setPrompts(currentCollection.prompts);
+    }
+  }, [currentCollectionId]);
 
   const addPrompt = () => {
     const newPrompt: PromptItem = {
@@ -149,6 +221,129 @@ Generate your response and follow all instructions above.`;
     setPrompts(prevPrompts => prevPrompts.map(p => p.id === id ? { ...p, isIncluded } : p));
   };
 
+  const handleCreateCollection = () => {
+    const name = prompt("Enter collection name:", "New Collection");
+    if (!name || !name.trim()) return;
+    
+    const newCollection = createCollection(name.trim());
+    addCollection(newCollection);
+    setCollections(getCollections());
+    setCurrentCollectionId(newCollection.id);
+    setCurrentCollectionIdState(newCollection.id);
+    setPrompts([]);
+  };
+
+  const handleSwitchCollection = (id: string) => {
+    setCurrentCollectionId(id);
+    setCurrentCollectionIdState(id);
+    const collection = getCollection(id);
+    if (collection) {
+      setPrompts(collection.prompts);
+    }
+  };
+
+  const handleRenameCollection = (id: string) => {
+    const collection = getCollection(id);
+    if (!collection) return;
+    
+    const newName = prompt("Enter new collection name:", collection.name);
+    if (!newName || !newName.trim() || newName === collection.name) return;
+    
+    updateCollection(id, { name: newName.trim() });
+    setCollections(getCollections());
+    if (id === currentCollectionId) {
+      setCurrentCollectionIdState(id);
+    }
+  };
+
+  const handleDeleteCollection = (id: string) => {
+    if (!confirm("Are you sure you want to delete this collection?")) return;
+    deleteCollection(id);
+    setCollections(getCollections());
+    const remaining = getCollections();
+    if (remaining.length > 0) {
+      handleSwitchCollection(remaining[0].id);
+    } else {
+      const defaultCollection = createCollection("Default", []);
+      addCollection(defaultCollection);
+      setCollections([defaultCollection]);
+      setCurrentCollectionId(defaultCollection.id);
+      setCurrentCollectionIdState(defaultCollection.id);
+      setPrompts([]);
+    }
+  };
+
+  const handleExportCollection = () => {
+    if (!currentCollection) return;
+    const json = exportCollection(currentCollection);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${currentCollection.name.replace(/\s+/g, "_")}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportAll = () => {
+    const json = exportAllCollections();
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `structify_collections_${new Date().toISOString().split("T")[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportCollection = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json";
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target?.result as string;
+        const imported = importCollection(text);
+        if (imported) {
+          addCollection(imported);
+          setCollections(getCollections());
+          handleSwitchCollection(imported.id);
+        } else {
+          alert("Failed to import collection. Please check the file format.");
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+
+  const handleImportAll = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json";
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target?.result as string;
+        if (importAllCollections(text)) {
+          setCollections(getCollections());
+          alert("Collections imported successfully!");
+        } else {
+          alert("Failed to import collections. Please check the file format.");
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
@@ -223,21 +418,90 @@ Generate your response and follow all instructions above.`;
         />
         <div className="flex h-full flex-col px-4 pb-4 pt-2">
           <SidebarHeader className="flex items-center gap-2 px-0 pb-4">
-            <SidebarMenu className="flex-row items-center gap-2">
+            <SidebarMenu className="flex-row items-center gap-2 w-full">
               <SidebarMenuItem className="w-auto">
                 <PanelTrigger
                   onClick={() => setIsOpen(false)}
                   srLabel="Close prompt panel"
                 />
               </SidebarMenuItem>
-              <SidebarMenuItem className="w-auto">
-                <SidebarMenuButton
-                  asChild
-                  size="lg"
-                  className="w-auto justify-start px-0 font-semibold"
-                >
-                  <span className="rounded-md px-3 py-1 text-xl">Structured Prompts</span>
-                </SidebarMenuButton>
+              <SidebarMenuItem className="flex-1 min-w-0">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <SidebarMenuButton
+                      size="lg"
+                      className="w-full justify-between px-3 font-semibold"
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <BookOpen className="size-4 shrink-0" />
+                        <span className="truncate text-xl">
+                          {currentCollection?.name || "Structured Prompts"}
+                        </span>
+                      </div>
+                      <ChevronDown className="size-4 shrink-0" />
+                    </SidebarMenuButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-56">
+                    <DropdownMenuLabel>Collections</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {collections.map((collection) => (
+                      <div key={collection.id} className="flex items-center gap-1">
+                        <DropdownMenuItem
+                          onClick={() => handleSwitchCollection(collection.id)}
+                          className={currentCollectionId === collection.id ? "bg-accent flex-1" : "flex-1"}
+                        >
+                          <span className="truncate">{collection.name}</span>
+                        </DropdownMenuItem>
+                        <button
+                          type="button"
+                          className="flex h-6 w-6 items-center justify-center rounded hover:bg-accent text-muted-foreground hover:text-foreground"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRenameCollection(collection.id);
+                          }}
+                          title="Rename collection"
+                        >
+                          <Pencil className="size-3" />
+                        </button>
+                        {collections.length > 1 && (
+                          <button
+                            type="button"
+                            className="mr-2 flex h-6 w-6 items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteCollection(collection.id);
+                            }}
+                            title="Delete collection"
+                          >
+                            <Trash2 className="size-3" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleCreateCollection}>
+                      <Plus className="size-4 mr-2" />
+                      New Collection
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleExportCollection}>
+                      <Download className="size-4 mr-2" />
+                      Export Current
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleExportAll}>
+                      <Download className="size-4 mr-2" />
+                      Export All
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleImportCollection}>
+                      <Upload className="size-4 mr-2" />
+                      Import Collection
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleImportAll}>
+                      <Upload className="size-4 mr-2" />
+                      Import All
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarHeader>

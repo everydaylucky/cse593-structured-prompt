@@ -11,6 +11,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ThreadList } from "@/components/assistant-ui/threadlist";
+import { CustomThreadList } from "@/components/assistant-ui/custom-thread-list";
 import { StructifyIcon } from "../logo/structify";
 import { Monitor, FlaskConical } from "lucide-react";
 
@@ -62,7 +63,7 @@ export function ThreadListSidebar({
         </div>
       </SidebarHeader>
       <SidebarContent className="aui-sidebar-content px-2">
-        <ThreadList />
+        <CustomThreadList />
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border">
         <SidebarMenu>
