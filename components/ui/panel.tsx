@@ -41,8 +41,8 @@ export function Panel({
       style={mergedStyle}
       className={cn(
         floating
-          ? "fixed top-0 right-0 h-full border-l bg-background transition-transform duration-300"
-          : "relative h-full border-l bg-background",
+          ? "fixed top-0 right-0 h-full border-l bg-background transition-transform duration-300 z-40"
+          : "relative h-full border-l bg-background z-40",
         !open && (floating ? "translate-x-full" : "hidden"),
         className,
       )}

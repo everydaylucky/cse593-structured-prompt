@@ -26,6 +26,7 @@ import {
   useAssistantState,
 } from "@assistant-ui/react";
 import { ComposerWithMention } from "./composer-with-mention";
+import { DraggableMessageBlock } from "./draggable-message-block";
 
 import type {
   ThreadAssistantMessagePart,
@@ -75,7 +76,7 @@ export const Thread: FC<ThreadProps> = ({
             }}
           >
             <ThreadHeader />
-            <ThreadPrimitive.Viewport className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll px-4">
+            <ThreadPrimitive.Viewport className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-hidden overflow-y-scroll px-4">
               <ThreadPrimitive.If empty>
                 <ThreadWelcome userStudyMode={userStudyMode} />
               </ThreadPrimitive.If>
@@ -248,27 +249,35 @@ const MessageError: FC = () => {
 };
 
 const AssistantMessage: FC = () => {
+  const message = useAssistantState(({ message }) => message);
+  
   return (
     <MessagePrimitive.Root asChild>
-      <div
+      <DraggableMessageBlock
+        id={message.id}
+        role="assistant"
         className="aui-assistant-message-root relative mx-auto w-full max-w-[var(--thread-max-width)] animate-in py-4 duration-150 ease-out fade-in slide-in-from-bottom-1 last:mb-24"
-        data-role="assistant"
       >
-        <div className="aui-assistant-message-content mx-2 leading-7 break-words text-foreground">
-          <MessagePrimitive.Parts
-            components={{
-              Text: MarkdownText,
-              tools: { Fallback: ToolFallback },
-            }}
-          />
-          <MessageError />
-        </div>
+        <div
+          className="relative w-full"
+          data-role="assistant"
+        >
+          <div className="aui-assistant-message-content mx-2 leading-7 break-words text-foreground">
+            <MessagePrimitive.Parts
+              components={{
+                Text: MarkdownText,
+                tools: { Fallback: ToolFallback },
+              }}
+            />
+            <MessageError />
+          </div>
 
-        <div className="aui-assistant-message-footer mt-2 ml-2 flex">
-          <BranchPicker />
-          <AssistantActionBar />
+          <div className="aui-assistant-message-footer mt-2 ml-2 flex">
+            <BranchPicker />
+            <AssistantActionBar />
+          </div>
         </div>
-      </div>
+      </DraggableMessageBlock>
     </MessagePrimitive.Root>
   );
 };
@@ -310,25 +319,30 @@ const AssistantActionBar: FC = () => {
 };
 
 const UserMessage: FC = () => {
+  const message = useAssistantState(({ message }) => message);
+  
   return (
     <MessagePrimitive.Root asChild>
-      <div
+      <DraggableMessageBlock
+        id={message.id}
+        role="user"
         className="aui-user-message-root mx-auto grid w-full max-w-[var(--thread-max-width)] animate-in auto-rows-auto grid-cols-[minmax(72px,1fr)_auto] gap-y-2 px-2 py-4 duration-150 ease-out fade-in slide-in-from-bottom-1 first:mt-3 last:mb-5 [&:where(>*)]:col-start-2"
-        data-role="user"
       >
-        <UserMessageAttachments />
+        <div className="w-full" data-role="user">
+          <UserMessageAttachments />
 
-        <div className="aui-user-message-content-wrapper relative col-start-2 min-w-0">
-          <div className="aui-user-message-content rounded-3xl bg-muted px-5 py-2.5 break-words text-foreground">
-            <MessagePrimitive.Parts />
+          <div className="aui-user-message-content-wrapper relative col-start-2 min-w-0">
+            <div className="aui-user-message-content rounded-3xl bg-muted px-5 py-2.5 break-words text-foreground">
+              <MessagePrimitive.Parts />
+            </div>
+            <div className="aui-user-action-bar-wrapper absolute top-1/2 left-0 -translate-x-full -translate-y-1/2 pr-2">
+              <UserActionBar />
+            </div>
           </div>
-          <div className="aui-user-action-bar-wrapper absolute top-1/2 left-0 -translate-x-full -translate-y-1/2 pr-2">
-            <UserActionBar />
-          </div>
+
+          <BranchPicker className="aui-user-branch-picker col-span-full col-start-1 row-start-3 -mr-1 justify-end" />
         </div>
-
-        <BranchPicker className="aui-user-branch-picker col-span-full col-start-1 row-start-3 -mr-1 justify-end" />
-      </div>
+      </DraggableMessageBlock>
     </MessagePrimitive.Root>
   );
 };
