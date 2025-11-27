@@ -49,6 +49,7 @@ export function CustomThreadList() {
       // 如果没有线程，创建一个默认的
       if (loadedThreads.length === 0) {
         const defaultThread = createThread("New Chat");
+        saveThread(defaultThread); // 保存到 localStorage
         setThreads([defaultThread]);
         setCurrentThreadIdState(defaultThread.id);
         setCurrentThreadId(defaultThread.id);
@@ -99,6 +100,7 @@ export function CustomThreadList() {
   const handleNewThread = useCallback(() => {
     try {
       const newThread = createThread("New Chat");
+      saveThread(newThread); // 保存到 localStorage
       setThreads(prev => [newThread, ...prev]);
       setCurrentThreadIdState(newThread.id);
       setCurrentThreadId(newThread.id);
