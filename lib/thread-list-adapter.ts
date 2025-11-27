@@ -108,9 +108,18 @@ export function createThreadListAdapter(): ThreadListAdapter {
           updatedAt: Date.now(),
         };
         
-        // 如果消息更新了，自动更新标题
+        // 如果消息更新了，且标题还是默认值，自动更新标题
+        // 如果用户已经手动编辑过标题，则保持用户编辑的标题不变
         if (updates.messages && updates.messages.length > 0) {
-          updated.title = extractThreadTitle(updates.messages);
+          const currentTitle = thread.title || "New Chat";
+          // 只有当标题是默认值 "New Chat" 时，才自动提取标题
+          if (currentTitle === "New Chat") {
+            const extractedTitle = extractThreadTitle(updates.messages);
+            // 只有当提取的标题不是 "New Chat" 时，才更新
+            if (extractedTitle && extractedTitle !== "New Chat") {
+              updated.title = extractedTitle;
+            }
+          }
         }
         
         saveThread(updated);

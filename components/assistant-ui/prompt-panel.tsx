@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Plus, ArrowLeft, Loader2, BookOpen, Download, Upload, Trash2, ChevronDown, Pencil } from "lucide-react";
+import { Plus, ArrowLeft, Loader2, BookOpen, Download, Upload, Trash2, ChevronDown, Pencil, MoreVertical, Folder, Bookmark } from "lucide-react";
+import { CollectionTree } from "./collection-tree";
 import { PromptCard } from "./prompt-card";
 import type { SummarySnapshot } from "./prompt-card";
 import { NotionStylePromptArea } from "./notion-style-prompt-area";
@@ -41,10 +42,6 @@ import {
   updateCollection,
   addCollection,
   deleteCollection,
-  exportCollection,
-  importCollection,
-  exportAllCollections,
-  importAllCollections,
 } from "@/lib/prompt-storage";
 import { getThread, getCurrentThreadId, setCurrentThreadId, getThreads } from "@/lib/thread-storage";
 import {
@@ -1132,76 +1129,6 @@ Generate your response and follow all instructions above.`;
     }
   };
 
-  const handleExportCollection = () => {
-    if (!currentCollection) return;
-    const json = exportCollection(currentCollection);
-    const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${currentCollection.name.replace(/\s+/g, "_")}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleExportAll = () => {
-    const json = exportAllCollections();
-    const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `structify_collections_${new Date().toISOString().split("T")[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleImportCollection = () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "application/json";
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const text = event.target?.result as string;
-        const imported = importCollection(text);
-        if (imported) {
-          addCollection(imported);
-          setCollections(getCollections());
-          handleSwitchCollection(imported.id);
-        } else {
-          alert("Failed to import collection. Please check the file format.");
-        }
-      };
-      reader.readAsText(file);
-    };
-    input.click();
-  };
-
-  const handleImportAll = () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "application/json";
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const text = event.target?.result as string;
-        if (importAllCollections(text)) {
-          setCollections(getCollections());
-          alert("Collections imported successfully!");
-        } else {
-          alert("Failed to import collections. Please check the file format.");
-        }
-      };
-      reader.readAsText(file);
-    };
-    input.click();
-  };
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -1352,7 +1279,7 @@ Generate your response and follow all instructions above.`;
           }
         />
         <div className="flex h-full flex-col px-4 pb-4 pt-2">
-          <SidebarHeader className="flex items-center gap-2 px-0 pb-4">
+          <SidebarHeader className="flex items-center gap-2 px-0 pb-2">
             <SidebarMenu className="flex-row items-center gap-2 w-full">
               <SidebarMenuItem className="w-auto">
                 <PanelTrigger
@@ -1361,80 +1288,28 @@ Generate your response and follow all instructions above.`;
                 />
               </SidebarMenuItem>
               <SidebarMenuItem className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 px-3 py-2">
+                  <BookOpen className="size-4 shrink-0" />
+                  <span className="truncate text-lg font-semibold">
+                    {currentCollection?.name || "Structured Prompts"}
+                  </span>
+                </div>
+              </SidebarMenuItem>
+              <SidebarMenuItem className="w-auto">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <SidebarMenuButton
-                      size="lg"
-                      className="w-full justify-between px-3 font-semibold"
-                    >
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <BookOpen className="size-4 shrink-0" />
-                        <span className="truncate text-xl">
-                          {currentCollection?.name || "Structured Prompts"}
-                        </span>
-                      </div>
-                      <ChevronDown className="size-4 shrink-0" />
-                    </SidebarMenuButton>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <Bookmark className="size-4" />
+                    </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-56">
-                    <DropdownMenuLabel>Collections</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {collections.map((collection) => (
-                      <div key={collection.id} className="flex items-center gap-1">
-                        <DropdownMenuItem
-                          onClick={() => handleSwitchCollection(collection.id)}
-                          className={currentCollectionId === collection.id ? "bg-accent flex-1" : "flex-1"}
-                        >
-                          <span className="truncate">{collection.name}</span>
-                        </DropdownMenuItem>
-                        <button
-                          type="button"
-                          className="flex h-6 w-6 items-center justify-center rounded hover:bg-accent text-muted-foreground hover:text-foreground"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRenameCollection(collection.id);
-                          }}
-                          title="Rename collection"
-                        >
-                          <Pencil className="size-3" />
-                        </button>
-                        {collections.length > 1 && (
-                          <button
-                            type="button"
-                            className="mr-2 flex h-6 w-6 items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteCollection(collection.id);
-                            }}
-                            title="Delete collection"
-                          >
-                            <Trash2 className="size-3" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleCreateCollection}>
-                      <Plus className="size-4 mr-2" />
-                      New Collection
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleExportCollection}>
-                      <Download className="size-4 mr-2" />
-                      Export Current
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleExportAll}>
-                      <Download className="size-4 mr-2" />
-                      Export All
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleImportCollection}>
-                      <Upload className="size-4 mr-2" />
-                      Import Collection
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleImportAll}>
-                      <Upload className="size-4 mr-2" />
-                      Import All
-                    </DropdownMenuItem>
+                  <DropdownMenuContent align="end" className="w-64 max-h-96 overflow-y-auto">
+                    <CollectionTree
+                      currentCollectionId={currentCollectionId}
+                      onSelectCollection={handleSwitchCollection}
+                      onRefresh={() => {
+                        setCollections(getCollections());
+                      }}
+                    />
                   </DropdownMenuContent>
                 </DropdownMenu>
               </SidebarMenuItem>

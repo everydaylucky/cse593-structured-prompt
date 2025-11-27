@@ -1,6 +1,6 @@
 "use client";
 
-import { PropsWithChildren, useEffect, useState, type FC } from "react";
+import React, { PropsWithChildren, useEffect, useState, type FC } from "react";
 import Image from "next/image";
 import { XIcon, PlusIcon, FileText } from "lucide-react";
 import {
@@ -218,18 +218,50 @@ export const ComposerAttachments: FC = () => {
 };
 
 export const ComposerAddAttachment: FC = () => {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  // 在组件挂载后，查找 ComposerPrimitive.AddAttachment 内部的 input 元素并修改 accept 属性
+  React.useEffect(() => {
+    if (!containerRef.current) return;
+
+    // 查找内部的 input[type="file"] 元素
+    const findAndUpdateInput = () => {
+      const input = containerRef.current?.querySelector('input[type="file"]') as HTMLInputElement;
+      if (input) {
+        input.accept = "image/*,.pdf,.html,.htm,.txt,.md,.doc,.docx";
+        input.setAttribute('multiple', '');
+      }
+    };
+
+    // 立即尝试查找
+    findAndUpdateInput();
+
+    // 使用 MutationObserver 监听 DOM 变化，以防 input 元素延迟创建
+    const observer = new MutationObserver(findAndUpdateInput);
+    observer.observe(containerRef.current, {
+      childList: true,
+      subtree: true,
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
   return (
-    <ComposerPrimitive.AddAttachment asChild>
-      <TooltipIconButton
-        tooltip="Add Attachment"
-        side="bottom"
-        variant="ghost"
-        size="icon"
-        className="aui-composer-add-attachment size-[34px] rounded-full p-1 text-xs font-semibold hover:bg-muted-foreground/15 dark:border-muted-foreground/15 dark:hover:bg-muted-foreground/30"
-        aria-label="Add Attachment"
-      >
-        <PlusIcon className="aui-attachment-add-icon size-5 stroke-[1.5px]" />
-      </TooltipIconButton>
-    </ComposerPrimitive.AddAttachment>
+    <div ref={containerRef}>
+      <ComposerPrimitive.AddAttachment asChild>
+        <TooltipIconButton
+          tooltip="Add Attachment"
+          side="bottom"
+          variant="ghost"
+          size="icon"
+          className="aui-composer-add-attachment size-[34px] rounded-full p-1 text-xs font-semibold hover:bg-muted-foreground/15 dark:border-muted-foreground/15 dark:hover:bg-muted-foreground/30"
+          aria-label="Add Attachment"
+        >
+          <PlusIcon className="aui-attachment-add-icon size-5 stroke-[1.5px]" />
+        </TooltipIconButton>
+      </ComposerPrimitive.AddAttachment>
+    </div>
   );
 };

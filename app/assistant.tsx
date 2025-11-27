@@ -714,6 +714,63 @@ export const Assistant = () => {
 
     const overId = over.id.toString();
     
+    // 处理 tree-node 拖拽（folder 和 page 的拖拽）
+    if (active.data.current?.type === "tree-node") {
+      const nodeId = active.data.current.nodeId as string;
+      const nodeType = active.data.current.nodeType as "folder" | "page";
+      
+      // 如果拖拽到另一个 tree-drop 区域
+      if (over.data.current?.type === "tree-drop") {
+        const targetNodeId = over.data.current.nodeId as string;
+        const targetNodeType = over.data.current.nodeType as "folder" | "page";
+        
+        // 不能将节点拖到自己或自己的子节点上
+        if (nodeId === targetNodeId) {
+          return;
+        }
+        
+        // 导入 moveNode 函数
+        const { moveNode } = require("@/lib/prompt-storage");
+        
+        // 如果目标是 folder，将节点移动到该 folder 下
+        // 如果目标是 page，将节点移动到该 page 的父节点下（与 page 同级）
+        if (targetNodeType === "folder") {
+          moveNode(nodeId, targetNodeId);
+        } else {
+          // 如果目标是 page，需要获取该 page 的 parentId
+          const { getNode } = require("@/lib/prompt-storage");
+          const targetNode = getNode(targetNodeId);
+          if (targetNode) {
+            moveNode(nodeId, targetNode.parentId);
+          }
+        }
+        
+        // 触发刷新事件，让 collection-tree 重新渲染
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("tree-node-moved", {
+            detail: { nodeId, targetNodeId }
+          }));
+        }
+        
+        return;
+      }
+      
+      // 如果拖拽到根区域（没有 over 或 over 不是 tree-drop）
+      // 将节点移动到根目录
+      if (!over.data.current || over.data.current.type !== "tree-drop") {
+        const { moveNode } = require("@/lib/prompt-storage");
+        moveNode(nodeId, null);
+        
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("tree-node-moved", {
+            detail: { nodeId, targetNodeId: null }
+          }));
+        }
+        
+        return;
+      }
+    }
+    
     // 处理从消息拖拽到 prompts 区域（包括 prompt-area 或任何 block）
     if (active.data.current?.type === "message" && 
         (overId === "prompt-area" || overId.startsWith("block-"))) {
