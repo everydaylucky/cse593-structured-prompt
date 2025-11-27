@@ -10,6 +10,7 @@ export interface ThreadData {
   createdAt: number;
   updatedAt: number;
   modelId?: string; // 当前使用的模型
+  folderId?: string; // 所属文件夹 ID
 }
 
 const STORAGE_KEY = "structify-threads";

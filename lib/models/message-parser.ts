@@ -59,12 +59,12 @@ export function parseModelFromMessage(messageText: string): ParsedMessage {
 /**
  * 检查文本是否应该触发模型搜索弹出框
  * 规则：只有光标在消息开头且输入了 @ 时才触发
+ * 如果已经有完整的 @mention（后面有空格），则不触发
  */
 export function shouldShowModelPopover(
   text: string,
   cursorPosition: number
 ): { show: boolean; query: string } {
-  // 获取光标前的文本
   const textBeforeCursor = text.substring(0, cursorPosition);
   const trimmedBefore = textBeforeCursor.trimStart();
   
@@ -80,11 +80,24 @@ export function shouldShowModelPopover(
     return { show: false, query: '' };
   }
   
-  // 提取 @ 后的查询内容
+  // 提取 @ 后的内容
   const afterAt = trimmedBefore.substring(1);
   const spaceIndex = afterAt.search(/[\s\n]/);
+  
+  // 如果 @ 后面已经有内容且后面有空格，说明已经有完整的 mention
+  if (spaceIndex !== -1 && spaceIndex > 0) {
+    // 检查光标是否在空格后面，如果是，说明 mention 已经完成，不触发
+    const afterSpace = afterAt.substring(spaceIndex + 1);
+    // 如果空格后面有内容，说明 mention 已完成
+    if (afterSpace.length > 0) {
+      return { show: false, query: '' };
+    }
+  }
+  
+  // 提取查询内容（@ 后到空格或换行的内容）
   const query = spaceIndex === -1 ? afterAt : afterAt.substring(0, spaceIndex);
   
+  // 如果查询内容为空（只有 @），也显示
   return { show: true, query };
 }
 

@@ -25,7 +25,7 @@ import {
   useAssistantApi,
   useAssistantState,
 } from "@assistant-ui/react";
-import { ComposerWithMention } from "./composer-with-mention";
+import { ComposerEnhanced } from "./composer-enhanced";
 import { DraggableMessageBlock } from "./draggable-message-block";
 
 import type {
@@ -152,7 +152,7 @@ const Composer: FC = () => {
       <ThreadScrollToBottom />
       <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col rounded-3xl border border-border bg-muted px-1 pt-2 shadow-[0_9px_9px_0px_rgba(0,0,0,0.01),0_2px_5px_0px_rgba(0,0,0,0.06)] dark:border-muted-foreground/15">
         <ComposerAttachments />
-        <ComposerWithMention />
+        <ComposerEnhanced />
         <ComposerAction />
       </ComposerPrimitive.Root>
     </div>

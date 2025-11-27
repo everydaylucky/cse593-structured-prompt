@@ -21,6 +21,7 @@ import { PANEL_SLIDE_DURATION_MS } from "@/components/ui/panel";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { createThreadListAdapter } from "@/lib/thread-list-adapter";
 import { saveThread, getCurrentThreadId, extractThreadTitle, createThread, setCurrentThreadId, getThread, getThreads } from "@/lib/thread-storage";
+import { CustomChatTransport } from "@/lib/custom-chat-transport";
 
 type AssistantThreadMessage = UIMessage;
 
@@ -109,18 +110,241 @@ export const Assistant = () => {
   
   // Wait for client-side mount to avoid hydration mismatch
   const [isMounted, setIsMounted] = useState(false);
+  const fetchInterceptorSetupRef = useRef(false);
+  
   useEffect(() => {
     setIsMounted(true);
+    
+    // ========== 假设1：拦截器设置时机问题 ==========
+    // 验证：确保拦截器只设置一次，并在组件挂载时立即设置
+    if (typeof window !== 'undefined' && !fetchInterceptorSetupRef.current) {
+      console.log('[Hypothesis 1] ========== Setting up global fetch interceptor ==========');
+      console.log('[Hypothesis 1] Current window.fetch:', typeof window.fetch);
+      console.log('[Hypothesis 1] Timestamp:', new Date().toISOString());
+      
+      const originalFetch = window.fetch;
+      fetchInterceptorSetupRef.current = true;
+      
+      window.fetch = async function(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+        // ========== 假设2：请求URL不匹配 ==========
+        // 验证：记录所有fetch请求，检查URL是否匹配
+        const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : 'Request object';
+        const urlString = typeof input === 'string' ? input : input instanceof URL ? input.toString() : String(input);
+        
+        console.log('[Hypothesis 2] ========== ALL fetch() calls ==========');
+        console.log('[Hypothesis 2] URL:', urlString);
+        console.log('[Hypothesis 2] URL includes /api/chat:', urlString.includes('/api/chat'));
+        console.log('[Hypothesis 2] Method:', init?.method || 'GET');
+        console.log('[Hypothesis 2] Has body:', !!init?.body);
+        console.log('[Hypothesis 2] Body type:', typeof init?.body);
+        console.log('[Hypothesis 2] Body constructor:', init?.body?.constructor?.name);
+        
+        // ========== 假设3：body格式问题 ==========
+        // 验证：检查body的实际类型和内容
+        if (urlString.includes('/api/chat')) {
+          console.log('[Hypothesis 3] ========== /api/chat request detected ==========');
+          console.log('[Hypothesis 3] Body exists:', !!init?.body);
+          console.log('[Hypothesis 3] Body type:', typeof init?.body);
+          console.log('[Hypothesis 3] Is string:', typeof init?.body === 'string');
+          console.log('[Hypothesis 3] Is FormData:', init?.body instanceof FormData);
+          console.log('[Hypothesis 3] Is Blob:', init?.body instanceof Blob);
+          console.log('[Hypothesis 3] Is ArrayBuffer:', init?.body instanceof ArrayBuffer);
+          
+          if (init?.body) {
+            if (typeof init.body === 'string') {
+              console.log('[Hypothesis 3] Body is string, length:', init.body.length);
+              console.log('[Hypothesis 3] Body preview (first 200 chars):', init.body.substring(0, 200));
+              
+              try {
+                const body = JSON.parse(init.body);
+                console.log('[Hypothesis 3] Body parsed successfully');
+                console.log('[Hypothesis 3] Body keys:', Object.keys(body));
+                console.log('[Hypothesis 3] Has messages:', !!body.messages);
+                console.log('[Hypothesis 3] Messages count:', body.messages?.length || 0);
+                console.log('[Hypothesis 3] Has ragContext already:', !!body.ragContext);
+                
+                const messages = body.messages as UIMessage[] | undefined;
+
+                if (messages && messages.length > 0) {
+                  const lastMessage = messages[messages.length - 1];
+                  console.log('[Hypothesis 3] Last message role:', lastMessage?.role);
+                  
+                  if (lastMessage?.role === 'user') {
+                    // 提取消息文本
+                    let messageText = '';
+                    const lastMessageAny = lastMessage as any;
+                    console.log('[Hypothesis 3] Last message structure:', {
+                      hasParts: Array.isArray(lastMessageAny.parts),
+                      partsCount: lastMessageAny.parts?.length || 0,
+                      hasContent: !!lastMessageAny.content,
+                      contentType: typeof lastMessageAny.content,
+                    });
+                    
+                    if (Array.isArray(lastMessageAny.parts)) {
+                      const textPart = lastMessageAny.parts.find((p: any) => p.type === 'text');
+                      messageText = textPart?.text || '';
+                      console.log('[Hypothesis 3] Extracted from parts, text length:', messageText.length);
+                    } else if (lastMessageAny.content) {
+                      messageText = typeof lastMessageAny.content === 'string' ? lastMessageAny.content : '';
+                      console.log('[Hypothesis 3] Extracted from content, text length:', messageText.length);
+                    }
+
+                    if (messageText) {
+                      console.log('[Hypothesis 3] Message text preview:', messageText.substring(0, 100));
+                      
+                      // ========== 假设4：异步竞态条件 ==========
+                      // 验证：记录RAG构建的开始和结束时间
+                      const ragStartTime = performance.now();
+                      console.log('[Hypothesis 4] ========== Starting RAG context build ==========');
+                      console.log('[Hypothesis 4] Start time:', ragStartTime);
+                      
+                      try {
+                        // 解析文档引用
+                        const { parseDocumentsFromMessage } = await import('@/lib/document-parser');
+                        const docParsed = parseDocumentsFromMessage(messageText);
+                        
+                        console.log('[Hypothesis 4] Document parsing result:', {
+                          hasDocumentMention: docParsed.hasDocumentMention,
+                          documentsCount: docParsed.documents.length,
+                          documents: docParsed.documents,
+                        });
+                        
+                        if (docParsed.hasDocumentMention && docParsed.documents.length > 0) {
+                          console.log('[Hypothesis 4] ✅ Found document mentions, building RAG context...');
+                          const { buildRAGContext } = await import('@/lib/rag-context-builder');
+                          const userQuery = docParsed.cleanedContent || messageText;
+                          
+                          const ragContext = await buildRAGContext(
+                            docParsed.documents.map(d => d.fileId),
+                            userQuery,
+                            { topK: 5, minScore: 0.3 }
+                          );
+
+                          const ragEndTime = performance.now();
+                          console.log('[Hypothesis 4] RAG build completed, duration:', ragEndTime - ragStartTime, 'ms');
+                          console.log('[Hypothesis 4] RAG context result:', {
+                            chunksCount: ragContext.relevantChunks.length,
+                            contextTextLength: ragContext.contextText.length,
+                            hasContext: ragContext.contextText.length > 0,
+                          });
+
+                          if (ragContext.contextText.length > 0) {
+                            body.ragContext = ragContext;
+                            init.body = JSON.stringify(body);
+                            console.log('[Hypothesis 4] ✅ RAG context added to body, chunks:', ragContext.relevantChunks.length);
+                            console.log('[Hypothesis 4] Updated body size:', init.body.length);
+                            console.log('[Hypothesis 4] Updated body has ragContext:', JSON.parse(init.body as string).ragContext ? 'YES' : 'NO');
+                          } else {
+                            console.warn('[Hypothesis 4] ⚠️ RAG context is empty');
+                          }
+                        } else {
+                          console.log('[Hypothesis 4] No document mentions found, skipping RAG');
+                        }
+                      } catch (ragError) {
+                        const ragEndTime = performance.now();
+                        console.error('[Hypothesis 4] ❌ RAG build failed after', ragEndTime - ragStartTime, 'ms');
+                        console.error('[Hypothesis 4] Error details:', ragError);
+                        console.error('[Hypothesis 4] Error stack:', ragError instanceof Error ? ragError.stack : 'No stack');
+                      }
+                    } else {
+                      console.warn('[Hypothesis 3] No message text extracted');
+                    }
+                  } else {
+                    console.log('[Hypothesis 3] Last message is not from user, skipping RAG');
+                  }
+                } else {
+                  console.warn('[Hypothesis 3] No messages found in body');
+                }
+              } catch (parseError) {
+                console.error('[Hypothesis 3] ❌ Failed to parse body as JSON:', parseError);
+                console.error('[Hypothesis 3] Body content:', init.body);
+              }
+            } else {
+              console.warn('[Hypothesis 3] Body is not a string, cannot process for RAG');
+              console.warn('[Hypothesis 3] Body type details:', {
+                type: typeof init.body,
+                constructor: init.body?.constructor?.name,
+                isFormData: init.body instanceof FormData,
+                isBlob: init.body instanceof Blob,
+              });
+            }
+          } else {
+            console.warn('[Hypothesis 3] No body in request');
+          }
+        }
+        
+        // 调用原始 fetch
+        const fetchStartTime = performance.now();
+        console.log('[Hypothesis 4] Calling original fetch at:', fetchStartTime);
+        const response = await originalFetch.call(this, input, init);
+        const fetchEndTime = performance.now();
+        console.log('[Hypothesis 4] Original fetch completed, duration:', fetchEndTime - fetchStartTime, 'ms');
+        return response;
+      };
+      
+      console.log('[Hypothesis 1] ✅ Global fetch interceptor installed');
+      console.log('[Hypothesis 1] New window.fetch:', typeof window.fetch);
+      
+      // ========== 假设5：请求被其他方式发送 ==========
+      // 验证：同时拦截XMLHttpRequest，检查是否有其他发送方式
+      const originalXHROpen = XMLHttpRequest.prototype.open;
+      const originalXHRSend = XMLHttpRequest.prototype.send;
+      
+      XMLHttpRequest.prototype.open = function(method: string, url: string | URL, async?: boolean, username?: string | null, password?: string | null) {
+        const urlString = typeof url === 'string' ? url : url.toString();
+        console.log('[Hypothesis 5] ========== XMLHttpRequest.open() called ==========');
+        console.log('[Hypothesis 5] Method:', method);
+        console.log('[Hypothesis 5] URL:', urlString);
+        console.log('[Hypothesis 5] URL includes /api/chat:', urlString.includes('/api/chat'));
+        // 保存URL以便在send时使用
+        (this as any)._url = urlString;
+        return originalXHROpen.call(this, method, url, async ?? true, username, password);
+      };
+      
+      XMLHttpRequest.prototype.send = function(body?: Document | XMLHttpRequestBodyInit | null) {
+        const url = (this as any)._url || '';
+        if (url.includes('/api/chat')) {
+          console.log('[Hypothesis 5] ========== XMLHttpRequest.send() for /api/chat ==========');
+          console.log('[Hypothesis 5] Body type:', typeof body);
+          console.log('[Hypothesis 5] Body:', body);
+        }
+        return originalXHRSend.apply(this, [body]);
+      };
+      
+      console.log('[Hypothesis 5] ✅ XMLHttpRequest interceptor installed');
+      
+      // 清理函数：恢复原始 fetch 和 XHR
+      return () => {
+        console.log('[Cleanup] Restoring original fetch and XHR');
+        window.fetch = originalFetch;
+        XMLHttpRequest.prototype.open = originalXHROpen;
+        XMLHttpRequest.prototype.send = originalXHRSend;
+        fetchInterceptorSetupRef.current = false;
+      };
+    } else {
+      if (fetchInterceptorSetupRef.current) {
+        console.log('[Hypothesis 1] ⚠️ Fetch interceptor already set up, skipping');
+      } else {
+        console.log('[Hypothesis 1] ⚠️ Cannot set up fetch interceptor (not in browser or already cleaned up)');
+      }
+    }
   }, []);
   
   const transport = useMemo(
-    () =>
-      new DefaultChatTransport<AssistantThreadMessage>({
+    () => {
+      console.log('[Assistant] Creating CustomChatTransport...');
+      const transportInstance = new CustomChatTransport({
         api: "/api/chat",
-        body: () => ({
+        body: {
           userStudyMode: userStudyModeRef.current,
-        }),
-      }),
+        },
+      });
+      console.log('[Assistant] CustomChatTransport created:', {
+        hasFetch: !!transportInstance.fetch,
+        fetchType: typeof transportInstance.fetch,
+      });
+      return transportInstance;
+    },
     [userStudyModeRef],
   );
 

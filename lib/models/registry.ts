@@ -26,39 +26,178 @@ export interface ModelConfig {
 
 /**
  * 模型注册表 - 单一配置源
- * 添加新模型只需在这里添加配置项
+ * 包含所有 OpenAI 和 Google Gemini 模型
  */
 export const MODEL_REGISTRY: ModelConfig[] = [
+  // OpenAI Models
+
   {
-    id: 'gpt-5',
-    displayName: 'GPT-5',
-    description: 'OpenAI GPT-5 model',
+    id: 'o1',
+    displayName: 'O1',
+    description: 'OpenAI O1 (200k context, reasoning)',
     provider: 'openai',
-    modelId: 'gpt-5-mini',
+    modelId: 'o1',
     apiKeyEnv: 'OPENAI_API_KEY',
-    icon: '🤖',
+    icon: '🧠',
+    config: {
+      maxTokens: 16384,
+      temperature: 0.7,
+    }
+  },
+  {
+    id: 'o1-mini',
+    displayName: 'O1 Mini',
+    description: 'OpenAI O1 Mini (200k context, reasoning)',
+    provider: 'openai',
+    modelId: 'o1-mini',
+    apiKeyEnv: 'OPENAI_API_KEY',
+    icon: '🧠',
+    config: {
+      maxTokens: 16384,
+      temperature: 0.7,
+    }
+  },
+  {
+    id: 'o3-mini',
+    displayName: 'O3 Mini',
+    description: 'OpenAI O3 Mini (200k context, reasoning)',
+    provider: 'openai',
+    modelId: 'o3-mini',
+    apiKeyEnv: 'OPENAI_API_KEY',
+    icon: '🧠',
+    config: {
+      maxTokens: 16384,
+      temperature: 0.7,
+    }
+  },
+  {
+    id: 'gpt-4o',
+    displayName: 'GPT-4o',
+    description: 'OpenAI GPT-4o (128k context, 16k output)',
+    provider: 'openai',
+    modelId: 'gpt-4o',
+    apiKeyEnv: 'OPENAI_API_KEY',
+    icon: '🚀',
     default: true,
+    config: {
+      maxTokens: 16384,
+      temperature: 0.7,
+    }
+  },
+  {
+    id: 'gpt-4o-mini',
+    displayName: 'GPT-4o Mini',
+    description: 'OpenAI GPT-4o Mini (128k context, 16k output)',
+    provider: 'openai',
+    modelId: 'gpt-4o-mini',
+    apiKeyEnv: 'OPENAI_API_KEY',
+    icon: '🚀',
+    default: true,
+    config: {
+      maxTokens: 16384,
+      temperature: 0.7,
+    }
+  },
+  {
+    id: 'gpt-4-turbo',
+    displayName: 'GPT-4 Turbo',
+    description: 'OpenAI GPT-4 Turbo (128k context, 4k output)',
+    provider: 'openai',
+    modelId: 'gpt-4-turbo',
+    apiKeyEnv: 'OPENAI_API_KEY',
+    icon: '🚀',
     config: {
       maxTokens: 4096,
       temperature: 0.7,
     }
   },
   {
-    id: 'gpt-5-codex',
-    displayName: 'GPT-5 Codex',
-    description: 'OpenAI GPT-5 optimized for code',
+    id: 'gpt-4',
+    displayName: 'GPT-4',
+    description: 'OpenAI GPT-4 (8k context, 8k output)',
     provider: 'openai',
-    modelId: 'gpt-5-codex',
+    modelId: 'gpt-4',
     apiKeyEnv: 'OPENAI_API_KEY',
-    icon: '💻',
-    category: 'code',
+    icon: '🚀',
+    config: {
+      maxTokens: 8192,
+      temperature: 0.7,
+    }
   },
+  {
+    id: 'gpt-3.5-turbo',
+    displayName: 'GPT-3.5 Turbo',
+    description: 'OpenAI GPT-3.5 Turbo (16k context, 4k output)',
+    provider: 'openai',
+    modelId: 'gpt-3.5-turbo',
+    apiKeyEnv: 'OPENAI_API_KEY',
+    icon: '🚀',
+    config: {
+      maxTokens: 4096,
+      temperature: 0.7,
+    }
+  },
+  // Google Gemini Models - Gemini 2.5 Series
   {
     id: 'gemini-2.5-pro',
     displayName: 'Gemini 2.5 Pro',
-    description: 'Google Gemini 2.5 Pro',
+    description: 'Google Gemini 2.5 Pro (1M context, 65k output)',
     provider: 'google',
     modelId: 'gemini-2.5-pro',
+    apiKeyEnv: 'GOOGLE_API_KEY',
+    icon: '⭐',
+    config: {
+      maxTokens: 65536,
+      temperature: 0.8,
+    }
+  },
+  {
+    id: 'gemini-2.5-flash',
+    displayName: 'Gemini 2.5 Flash',
+    description: 'Google Gemini 2.5 Flash (1M context, 65k output)',
+    provider: 'google',
+    modelId: 'gemini-2.5-flash',
+    apiKeyEnv: 'GOOGLE_API_KEY',
+    icon: '⭐',
+    config: {
+      maxTokens: 65536,
+      temperature: 0.8,
+    }
+  },
+  {
+    id: 'gemini-2.5-flash-lite-preview',
+    displayName: 'Gemini 2.5 Flash Lite (Preview)',
+    description: 'Google Gemini 2.5 Flash Lite Preview (1M context)',
+    provider: 'google',
+    modelId: 'gemini-2.5-flash-lite-preview',
+    apiKeyEnv: 'GOOGLE_API_KEY',
+    icon: '⭐',
+    config: {
+      maxTokens: 65536,
+      temperature: 0.8,
+    }
+  },
+  // Google Gemini Models - Gemini 3.0 Series
+  {
+    id: 'gemini-3-pro-preview',
+    displayName: 'Gemini 3 Pro (Preview)',
+    description: 'Google Gemini 3 Pro Preview (200k context)',
+    provider: 'google',
+    modelId: 'gemini-3-pro-preview',
+    apiKeyEnv: 'GOOGLE_API_KEY',
+    icon: '⭐',
+    config: {
+      maxTokens: 8192,
+      temperature: 0.8,
+    }
+  },
+  // Google Gemini Models - Gemini 1.5 Series
+  {
+    id: 'gemini-1.5-pro',
+    displayName: 'Gemini 1.5 Pro',
+    description: 'Google Gemini 1.5 Pro',
+    provider: 'google',
+    modelId: 'gemini-1.5-pro',
     apiKeyEnv: 'GOOGLE_API_KEY',
     icon: '⭐',
     config: {
@@ -67,14 +206,18 @@ export const MODEL_REGISTRY: ModelConfig[] = [
     }
   },
   {
-    id: 'gemini-3-pro',
-    displayName: 'Gemini 3 Pro',
-    description: 'Google Gemini 3 Pro',
+    id: 'gemini-1.5-flash',
+    displayName: 'Gemini 1.5 Flash',
+    description: 'Google Gemini 1.5 Flash',
     provider: 'google',
-    modelId: 'gemini-3-pro',
+    modelId: 'gemini-1.5-flash',
     apiKeyEnv: 'GOOGLE_API_KEY',
     icon: '⭐',
-  }
+    config: {
+      maxTokens: 8192,
+      temperature: 0.8,
+    }
+  },
 ];
 
 /**

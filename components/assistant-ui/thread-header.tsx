@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAssistantApi, useAssistantState } from "@assistant-ui/react";
-import { Plus, ChevronDown, Check, Download, Upload, MoreVertical } from "lucide-react";
+import { Plus, ChevronDown, Check, Download, Upload, MoreVertical, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -25,6 +25,7 @@ import {
   getCurrentCollectionId,
   addCollection,
 } from "@/lib/prompt-storage";
+import { ModelSettingsDialog } from "./model-settings-dialog";
 
 export function ThreadHeader() {
   const api = useAssistantApi();
@@ -34,6 +35,7 @@ export function ThreadHeader() {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [threadTitle, setThreadTitle] = useState("New Chat");
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // 从 composer 值中解析当前模型
   useEffect(() => {
@@ -369,8 +371,21 @@ export function ThreadHeader() {
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
-        {/* 模型选择器已移动到左侧边栏 */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setIsSettingsOpen(true)}
+          className="h-8 w-8 p-0"
+          title="Model Settings"
+        >
+          <Settings className="size-4" />
+        </Button>
       </div>
+
+      <ModelSettingsDialog
+        open={isSettingsOpen}
+        onOpenChange={setIsSettingsOpen}
+      />
     </div>
   );
 }
