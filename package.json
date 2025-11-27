@@ -1,6 +1,6 @@
 {
   "name": "assistant-ui-starter",
-  "version": "0.02",
+  "version": "0.0.2",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
