@@ -3,7 +3,7 @@ import chatPrompt from "@/data/chatPrompt.json";
 import { parseModelFromMessage } from "@/lib/models/message-parser";
 import { parseDocumentsFromMessage } from "@/lib/document-parser";
 import { createModelProvider } from "@/lib/models/providers/factory";
-import { buildRAGContext, buildEnhancedMessage } from "@/lib/rag-context-builder";
+import { buildRAGContext, buildEnhancedMessage, type RAGContext } from "@/lib/rag-context-builder";
 import { getModelConfigOverride, mergeModelConfig } from "@/lib/models/model-config-storage";
 
 const systemPrompt = chatPrompt.lines.join("\n");
@@ -12,16 +12,7 @@ type ChatRequestBody = {
   messages: UIMessage[];
   userStudyMode?: boolean;
   documentIds?: string[]; // 引用的文档 ID（可选，也可以从消息中解析）
-  ragContext?: {
-    relevantChunks: Array<{
-      text: string;
-      fileId: string;
-      fileName: string;
-      score: number;
-      chunkIndex: number;
-    }>;
-    contextText: string;
-  }; // 客户端构建的 RAG 上下文（可选）
+  ragContext?: RAGContext; // 客户端构建的 RAG 上下文（可选）
 };
 
 export async function POST(req: Request) {

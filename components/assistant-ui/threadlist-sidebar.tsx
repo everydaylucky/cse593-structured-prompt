@@ -17,10 +17,10 @@ import { ThreadTree } from "@/components/assistant-ui/thread-tree";
 import { FileUploadPanel } from "@/components/assistant-ui/file-upload-panel";
 import { ProcessedFilesPanel } from "@/components/assistant-ui/processed-files-panel";
 import { DocumentTree } from "@/components/assistant-ui/document-tree";
-import { SidebarLayoutSwitcher } from "@/components/assistant-ui/sidebar-layout-switcher";
+import { SettingsDialog } from "@/components/assistant-ui/settings-dialog";
 import { ResizableSplitPanel } from "@/components/assistant-ui/resizable-split-panel";
 import { StructifyIcon } from "../logo/structify";
-import { Monitor, FlaskConical } from "lucide-react";
+import { Monitor, FlaskConical, Settings as SettingsIcon } from "lucide-react";
 import { getSidebarLayoutMode, type SidebarLayoutMode } from "@/lib/sidebar-layout-storage";
 import { useAssistantApi } from "@assistant-ui/react";
 import { setCurrentThreadId } from "@/lib/thread-storage";
@@ -41,6 +41,7 @@ export function ThreadListSidebar({
 }: ThreadListSidebarProps) {
   const [layoutMode, setLayoutMode] = useState<SidebarLayoutMode>('combined');
   const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const api = useAssistantApi();
 
   useEffect(() => {
@@ -117,38 +118,9 @@ export function ThreadListSidebar({
       </div>
     );
 
-    if (layoutMode === 'threads-only') {
-      return (
-        <SidebarContent className="aui-sidebar-content px-2 flex flex-col">
-          <div className="flex items-center justify-between mb-2 px-2">
-            <SidebarLayoutSwitcher onModeChange={setLayoutMode} />
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {topPanel}
-          </div>
-        </SidebarContent>
-      );
-    }
-
-    if (layoutMode === 'documents-only') {
-      return (
-        <SidebarContent className="aui-sidebar-content px-2 flex flex-col">
-          <div className="flex items-center justify-between mb-2 px-2">
-            <SidebarLayoutSwitcher onModeChange={setLayoutMode} />
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {bottomPanel}
-          </div>
-        </SidebarContent>
-      );
-    }
-
-    // Combined mode with resizable split
+    // Combined mode with resizable split (only mode now)
     return (
       <SidebarContent className="aui-sidebar-content px-2 flex flex-col">
-        <div className="flex items-center justify-between mb-2 px-2">
-          <SidebarLayoutSwitcher onModeChange={setLayoutMode} />
-        </div>
         <div className="flex-1 min-h-0">
           <ResizableSplitPanel
             topPanel={topPanel}
@@ -201,8 +173,24 @@ export function ThreadListSidebar({
       
       {renderContent()}
       
-      <SidebarFooter className="border-t border-sidebar-border">
+      <SidebarFooter className="border-t border-sidebar-border space-y-1">
         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              size="sm"
+              onClick={() => setSettingsOpen(true)}
+              title="Settings"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex size-8 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                  <SettingsIcon className="size-4" aria-hidden="true" />
+                </div>
+                <div className="flex flex-col text-left leading-tight">
+                  <span className="text-sm font-medium">Settings</span>
+                </div>
+              </div>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               size="sm"
@@ -233,6 +221,7 @@ export function ThreadListSidebar({
         </SidebarMenu>
       </SidebarFooter>
       <SidebarRail />
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </Sidebar>
   );
 }

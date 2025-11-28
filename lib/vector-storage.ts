@@ -28,6 +28,7 @@ export interface FileVectorIndex {
   embeddingModel?: string;
   folderId?: string; // 所属文件夹 ID
   metadata?: {
+    title?: string; // Generated document title
     summary?: string;
     keywords?: string[];
     topics?: string[];

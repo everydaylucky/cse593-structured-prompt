@@ -4,6 +4,7 @@
  */
 
 export interface DocumentMetadata {
+  title?: string; // Generated document title
   summary: string;
   keywords: string[];
   topics: string[];
@@ -35,6 +36,10 @@ export async function generateDocumentMetadata(
   console.log("[RAG Enhancement] Original text length:", documentText.length);
 
   try {
+    // 获取自定义 prompt（客户端）
+    const { getSummaryPrompt } = await import("./summary-prompt-config-storage");
+    const customPrompt = getSummaryPrompt();
+
     // 调用 API 路由（服务器端处理，可以访问 .env）
     const response = await fetch("/api/document-metadata", {
       method: "POST",
@@ -44,6 +49,7 @@ export async function generateDocumentMetadata(
       body: JSON.stringify({
         text: documentText,
         fileName: fileName,
+        customPrompt: customPrompt, // 传递自定义 prompt
       }),
     });
 
@@ -59,6 +65,7 @@ export async function generateDocumentMetadata(
     }
 
     const metadata: DocumentMetadata = {
+      title: data.metadata.title, // Generated document title
       summary: data.metadata.summary || `Document: ${fileName}`,
       keywords: data.metadata.keywords || [],
       topics: data.metadata.topics || [],

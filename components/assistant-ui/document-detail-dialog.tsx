@@ -257,6 +257,23 @@ export function DocumentDetailDialog({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-4">
+          {/* 生成的文档标题 */}
+          {file.metadata?.title && file.metadata.title !== file.fileName && (
+            <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+              <div className="flex items-start gap-2">
+                <FileText className="size-4 mt-0.5 text-primary shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">
+                    Generated Title
+                  </p>
+                  <p className="text-sm font-semibold text-foreground break-words">
+                    {file.metadata.title}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* 引用按钮 - 放在最上面 */}
           <div className="flex gap-2">
             <Button onClick={handleReference} size="sm" variant="default">
