@@ -32,7 +32,27 @@ export interface FileVectorIndex {
     keywords?: string[];
     topics?: string[];
     keyPhrases?: string[];
-  }; // 文档元数据（由 GPT-4o-mini 生成）
+    tableOfContents?: Array<{
+      title: string;
+      level: number; // 1 = 一级标题, 2 = 二级标题, etc.
+      pageNumber?: number; // 如果可提取的话
+      approximateChunkIndex?: number; // 估算的 chunk 索引（用于跳转）
+      startChar?: number; // 目录条目在文档中的起始字符位置
+      endChar?: number; // 目录条目在文档中的结束字符位置
+    }>; // 文档目录结构
+    entities?: {
+      persons?: string[];
+      organizations?: string[];
+      locations?: string[];
+      dates?: string[];
+      other?: {
+        emails?: string[];
+        urls?: string[];
+        currencies?: string[];
+        percentages?: string[];
+      };
+    };
+  }; // 文档元数据（由 GPT-4o-mini 生成 + 本地实体识别）
 }
 
 interface VectorDB extends DBSchema {
@@ -128,15 +148,35 @@ export async function storeFileMetadata(
     chunkCount: number;
     mathpixRequestId?: string;
     embeddingModel?: string;
+    folderId?: string;
+    metadata?: FileVectorIndex['metadata']; // 文档分析元数据
   }
 ): Promise<void> {
   const database = await initVectorDB();
-  await database.put('files', {
+  const fileData: FileVectorIndex = {
     id: fileId,
     threadId,
-    ...metadata,
+    fileName: metadata.fileName,
+    fileSize: metadata.fileSize,
+    pageCount: metadata.pageCount,
+    chunkCount: metadata.chunkCount,
+    mathpixRequestId: metadata.mathpixRequestId,
+    embeddingModel: metadata.embeddingModel,
+    folderId: metadata.folderId,
+    metadata: metadata.metadata, // 文档分析元数据
     processedAt: Date.now(),
+  };
+  
+  console.log("[VectorStorage] Storing file metadata:", {
+    fileId,
+    fileName: fileData.fileName,
+    hasMetadata: !!fileData.metadata,
+    metadataKeys: fileData.metadata ? Object.keys(fileData.metadata) : [],
+    hasSummary: !!fileData.metadata?.summary,
+    hasEntities: !!fileData.metadata?.entities,
   });
+  
+  await database.put('files', fileData);
 }
 
 /**

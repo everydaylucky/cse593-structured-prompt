@@ -53,14 +53,45 @@ export async function buildRAGContext(
     };
   }
 
-  // 步骤1：查询增强（使用 GPT-4o-mini）
+  // 步骤1：获取文档结构信息（用于查询增强）
+  const documentStructures: Array<{
+    fileName: string;
+    tableOfContents?: Array<{
+      title: string;
+      level: number;
+      pageNumber?: number;
+    }>;
+  }> = [];
+  
+  if (useEnhancement && typeof window !== 'undefined') {
+    try {
+      const { getFileMetadata } = await import("./vector-storage");
+      for (const fileId of documentIds) {
+        const fileMetadata = await getFileMetadata(fileId);
+        if (fileMetadata && fileMetadata.metadata?.tableOfContents) {
+          documentStructures.push({
+            fileName: fileMetadata.fileName,
+            tableOfContents: fileMetadata.metadata.tableOfContents,
+          });
+        }
+      }
+      console.log("[RAG] Document structures loaded:", documentStructures.length);
+    } catch (error) {
+      console.warn("[RAG] ⚠️ Failed to load document structures:", error);
+    }
+  }
+
+  // 步骤2：查询增强（使用 GPT-4o-mini，传入文档结构信息）
   let enhancedQuery = userQuery;
   let searchTerms: string[] = [];
   
   if (useEnhancement && typeof window !== 'undefined') {
     try {
       console.log("[RAG] ========== Step 1: Query Enhancement ==========");
-      const enhanced = await enhanceQuery(userQuery);
+      const enhanced = await enhanceQuery(
+        userQuery,
+        documentStructures.length > 0 ? documentStructures : undefined
+      );
       enhancedQuery = enhanced.enhancedQuery;
       searchTerms = enhanced.searchTerms.length > 0 
         ? enhanced.searchTerms 
@@ -72,6 +103,7 @@ export async function buildRAGContext(
         original: userQuery,
         enhanced: enhancedQuery,
         searchTerms: searchTerms,
+        documentStructuresUsed: documentStructures.length,
       });
     } catch (error) {
       console.warn("[RAG] ⚠️ Query enhancement failed, using original query:", error);
@@ -81,13 +113,13 @@ export async function buildRAGContext(
     searchTerms = [userQuery];
   }
 
-  // 步骤2：生成查询向量（使用增强后的查询）
+  // 步骤3：生成查询向量（使用增强后的查询）
   console.log("[RAG] ========== Step 2: Generating query embedding ==========");
   console.log("[RAG] Using enhanced query for embedding:", enhancedQuery);
   const queryEmbedding = await generateEmbedding(enhancedQuery);
   console.log("[RAG] Query embedding generated, dimension:", queryEmbedding.length);
 
-  // 步骤3：为每个文档检索相关块
+  // 步骤4：为每个文档检索相关块
   const allVectorResults: Array<{
     text: string;
     fileId: string;

@@ -3,14 +3,16 @@
  * 使用 GPT-4o-mini 进行文档预处理、查询增强和混合检索
  */
 
-import { generateText } from "ai";
-import { openai } from "@ai-sdk/openai";
-
 export interface DocumentMetadata {
   summary: string;
   keywords: string[];
   topics: string[];
   keyPhrases: string[];
+  tableOfContents?: Array<{
+    title: string;
+    level: number;
+    pageNumber?: number;
+  }>;
 }
 
 export interface EnhancedQuery {
@@ -23,58 +25,52 @@ export interface EnhancedQuery {
 
 /**
  * 使用 GPT-4o-mini 生成文档摘要和元数据
+ * 通过 API 路由调用，确保可以访问服务器端的 OPENAI_API_KEY
  */
 export async function generateDocumentMetadata(
   documentText: string,
   fileName: string
 ): Promise<DocumentMetadata> {
   console.log("[RAG Enhancement] Generating document metadata for:", fileName);
-  
-  const prompt = `You are a document analysis assistant. Analyze the following document and extract:
-
-1. A concise summary (2-3 sentences)
-2. Key keywords (10-15 most important terms)
-3. Main topics (3-5 broad topics)
-4. Key phrases (5-10 important phrases or concepts)
-
-Document name: ${fileName}
-Document text (first 2000 characters):
-${documentText.substring(0, 2000)}
-
-Return your response as a JSON object with the following structure:
-{
-  "summary": "brief summary here",
-  "keywords": ["keyword1", "keyword2", ...],
-  "topics": ["topic1", "topic2", ...],
-  "keyPhrases": ["phrase1", "phrase2", ...]
-}`;
+  console.log("[RAG Enhancement] Original text length:", documentText.length);
 
   try {
-    // 使用 AI SDK 的 generateText
-    const { text } = await generateText({
-      model: openai("gpt-4o-mini"),
-      prompt: prompt,
-      temperature: 0.3,
+    // 调用 API 路由（服务器端处理，可以访问 .env）
+    const response = await fetch("/api/document-metadata", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        text: documentText,
+        fileName: fileName,
+      }),
     });
-    
-    // 尝试解析JSON响应
-    let metadata: DocumentMetadata;
-    try {
-      metadata = JSON.parse(text);
-    } catch {
-      // 如果不是JSON，尝试提取
-      metadata = {
-        summary: text.substring(0, 200),
-        keywords: extractKeywords(text),
-        topics: extractTopics(text),
-        keyPhrases: extractPhrases(text),
-      };
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(`Failed to generate metadata: ${errorData.error || response.statusText}`);
     }
+
+    const data = await response.json();
+    
+    if (!data.success || !data.metadata) {
+      throw new Error("Invalid response from metadata API");
+    }
+
+    const metadata: DocumentMetadata = {
+      summary: data.metadata.summary || `Document: ${fileName}`,
+      keywords: data.metadata.keywords || [],
+      topics: data.metadata.topics || [],
+      keyPhrases: data.metadata.keyPhrases || [],
+      tableOfContents: data.metadata.tableOfContents || [],
+    };
 
     console.log("[RAG Enhancement] ✅ Document metadata generated:", {
       summaryLength: metadata.summary.length,
       keywordsCount: metadata.keywords.length,
       topicsCount: metadata.topics.length,
+      keyPhrasesCount: metadata.keyPhrases.length,
     });
 
     return metadata;
@@ -92,60 +88,61 @@ Return your response as a JSON object with the following structure:
 
 /**
  * 使用 GPT-4o-mini 增强用户查询
+ * @param userQuery 用户查询
+ * @param documentStructures 文档结构信息（目录），用于指导搜索方向
  */
-export async function enhanceQuery(userQuery: string): Promise<EnhancedQuery> {
+export async function enhanceQuery(
+  userQuery: string,
+  documentStructures?: Array<{
+    fileName: string;
+    tableOfContents?: Array<{
+      title: string;
+      level: number;
+      pageNumber?: number;
+    }>;
+  }>
+): Promise<EnhancedQuery> {
   console.log("[RAG Enhancement] Enhancing user query:", userQuery);
-
-  const prompt = `You are a search query enhancement assistant. Given a user's question, provide:
-
-1. An enhanced version of the query that is more suitable for document retrieval
-2. Key concepts extracted from the query
-3. Synonyms and related terms
-4. Search terms for keyword matching
-
-User query: "${userQuery}"
-
-Return your response as a JSON object:
-{
-  "enhancedQuery": "enhanced version of the query",
-  "keyConcepts": ["concept1", "concept2", ...],
-  "synonyms": ["synonym1", "synonym2", ...],
-  "searchTerms": ["term1", "term2", ...]
-}`;
+  console.log("[RAG Enhancement] Document structures provided:", documentStructures?.length || 0);
 
   try {
-    // 使用 AI SDK 的 generateText
-    const { text } = await generateText({
-      model: openai("gpt-4o-mini"),
-      prompt: prompt,
-      temperature: 0.3,
+    // 调用 API 路由（服务器端处理，可以访问 .env）
+    const response = await fetch("/api/query-enhancement", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userQuery,
+        documentStructures,
+      }),
     });
-    
-    let enhanced: EnhancedQuery;
-    try {
-      const parsed = JSON.parse(text);
-      enhanced = {
-        originalQuery: userQuery,
-        enhancedQuery: parsed.enhancedQuery || userQuery,
-        keyConcepts: parsed.keyConcepts || [],
-        synonyms: parsed.synonyms || [],
-        searchTerms: parsed.searchTerms || [],
-      };
-    } catch {
-      enhanced = {
-        originalQuery: userQuery,
-        enhancedQuery: text.substring(0, 200) || userQuery,
-        keyConcepts: extractKeywords(text),
-        synonyms: [],
-        searchTerms: extractKeywords(userQuery),
-      };
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(`Failed to enhance query: ${errorData.error || response.statusText}`);
     }
+
+    const data = await response.json();
+    
+    if (!data.success || !data.enhanced) {
+      throw new Error("Invalid response from query enhancement API");
+    }
+
+    const enhanced: EnhancedQuery = {
+      originalQuery: data.enhanced.originalQuery || userQuery,
+      enhancedQuery: data.enhanced.enhancedQuery || userQuery,
+      keyConcepts: data.enhanced.keyConcepts || [],
+      synonyms: data.enhanced.synonyms || [],
+      searchTerms: data.enhanced.searchTerms || [],
+    };
 
     console.log("[RAG Enhancement] ✅ Query enhanced:", {
       original: userQuery,
       enhanced: enhanced.enhancedQuery,
       conceptsCount: enhanced.keyConcepts.length,
       searchTermsCount: enhanced.searchTerms.length,
+      documentStructuresUsed: documentStructures?.length || 0,
     });
 
     return enhanced;
@@ -318,13 +315,23 @@ function extractKeywords(text: string): string[] {
 function extractTopics(text: string): string[] {
   // 简单实现：查找大写字母开头的短语
   const topics = text.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b/g) || [];
-  return [...new Set(topics)].slice(0, 5);
+  const uniqueTopics = new Set(topics);
+  const result: string[] = [];
+  uniqueTopics.forEach(topic => {
+    result.push(topic);
+  });
+  return result.slice(0, 5);
 }
 
 // 辅助函数：从文本中提取短语
 function extractPhrases(text: string): string[] {
   // 提取2-4个词的短语
   const phrases = text.match(/\b\w+(?:\s+\w+){1,3}\b/g) || [];
-  return [...new Set(phrases)].slice(0, 10);
+  const uniquePhrases = new Set(phrases);
+  const result: string[] = [];
+  uniquePhrases.forEach(phrase => {
+    result.push(phrase);
+  });
+  return result.slice(0, 10);
 }
 

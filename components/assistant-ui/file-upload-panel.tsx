@@ -110,15 +110,16 @@ export function FileUploadPanel({
         />
       </div>
 
+      {/* 紧凑的单行上传框 */}
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={cn(
-          "border-2 border-dashed rounded-lg p-6 text-center transition-colors",
+          "flex items-center gap-2 border rounded-lg transition-colors",
           isDragging
             ? "border-primary bg-primary/5"
-            : "border-muted-foreground/25 hover:border-muted-foreground/50",
+            : "border-border hover:border-primary/50",
           isProcessing && "opacity-50 pointer-events-none"
         )}
       >
@@ -132,44 +133,49 @@ export function FileUploadPanel({
         />
 
         {isProcessing ? (
-          <div className="space-y-2">
-            <Loader2 className="size-6 animate-spin mx-auto text-primary" />
-            {progress && (
-              <div className="space-y-1">
-                <p className="text-sm font-medium">{progress.stage}</p>
-                <p className="text-xs text-muted-foreground">
-                  {progress.message || `${progress.progress}%`}
-                </p>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div
-                    className="bg-primary h-2 rounded-full transition-all"
-                    style={{ width: `${progress.progress}%` }}
-                  />
+          <>
+            <div className="flex-1 px-3 py-2">
+              <div className="flex items-center gap-2">
+                <Loader2 className="size-4 animate-spin text-primary" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {progress?.message || `${progress?.progress || 0}%`}
+                  </p>
+                  {progress && (
+                    <div className="w-full bg-muted rounded-full h-1.5 mt-1">
+                      <div
+                        className="bg-primary h-1.5 rounded-full transition-all"
+                        style={{ width: `${progress.progress}%` }}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          </>
         ) : (
-          <div className="space-y-2">
-            <Upload className="size-8 mx-auto text-muted-foreground" />
-            <div>
-              <p className="text-sm font-medium">
-                Drop PDF here or click to upload
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Files will be processed for RAG
-              </p>
+          <>
+            <div
+              className="flex-1 px-3 py-2 cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Upload className="size-4 shrink-0" />
+                <span className="truncate">
+                  {isDragging ? "Drop PDF here" : "Drop PDF or click to upload"}
+                </span>
+              </div>
             </div>
             <Button
               onClick={() => fileInputRef.current?.click()}
               variant="outline"
               size="sm"
-              className="mt-2"
+              className="mx-2 shrink-0"
             >
               <FileText className="size-4 mr-2" />
-              Select PDF
+              Browse
             </Button>
-          </div>
+          </>
         )}
       </div>
 
