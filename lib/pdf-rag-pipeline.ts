@@ -5,6 +5,8 @@
 
 import { processPDF } from './pdf-processor';
 import { chunkText, type TextChunk } from './text-chunker';
+import { semanticChunkText } from './semantic-chunker';
+import { getChunkingConfig } from './chunking-config-storage';
 import { generateEmbeddingsParallel } from './vector-generator';
 import { storeChunks, storeFileMetadata } from './vector-storage';
 import { generateDocumentMetadata } from './rag-enhancement';
@@ -278,14 +280,23 @@ export async function processPDFToRAG(
       message: 'Chunking text...',
     });
 
-    // 直接调用 chunkText，它内部已经会定期让出主线程
+    // 使用语义感知分块器
     const chunkStartTime = Date.now();
-    console.log(`[PDF RAG] Starting chunking: text length=${text.length}`);
-    const chunks = await chunkText(text, {
-      chunkSize: 1000,
-      chunkOverlap: 200, // 20% 重叠
+    console.log(`[PDF RAG] Starting semantic chunking: text length=${text.length}`);
+    
+    // 获取分块配置
+    const chunkingConfig = getChunkingConfig();
+    
+    const chunks = await semanticChunkText(text, {
+      chunkSizeTokens: chunkingConfig.chunkSizeTokens,
+      chunkOverlapRatio: chunkingConfig.chunkOverlapRatio,
+      minChunkSizeTokens: chunkingConfig.minChunkSizeTokens,
+      maxChunkSizeTokens: chunkingConfig.maxChunkSizeTokens,
+      preserveSentences: chunkingConfig.preserveSentences,
+      preserveSections: chunkingConfig.preserveSections,
     });
-    console.log(`[PDF RAG] ✓ Chunking completed in ${Date.now() - chunkStartTime}ms. Created ${chunks.length} chunks`);
+    
+    console.log(`[PDF RAG] ✓ Semantic chunking completed in ${Date.now() - chunkStartTime}ms. Created ${chunks.length} chunks`);
 
     onProgress?.({
       stage: 'chunking',
@@ -393,13 +404,14 @@ export async function processPDFToRAG(
       chunkCount: chunks.length,
       mathpixRequestId: metadata.mathpixRequestId,
       embeddingModel: 'text-embedding-004',
-      metadata: {
-        // GPT-4o-mini 生成的元数据
-        summary: documentMetadata?.summary,
-        keywords: documentMetadata?.keywords || [],
-        topics: documentMetadata?.topics || [],
-        keyPhrases: documentMetadata?.keyPhrases || [],
-        tableOfContents: matchedTOC,
+        metadata: {
+          // GPT-4o-mini 生成的元数据
+          title: documentMetadata?.title, // Generated document title
+          summary: documentMetadata?.summary,
+          keywords: documentMetadata?.keywords || [],
+          topics: documentMetadata?.topics || [],
+          keyPhrases: documentMetadata?.keyPhrases || [],
+          tableOfContents: matchedTOC,
         // 本地实体识别结果
         entities: {
           persons: entities.persons,

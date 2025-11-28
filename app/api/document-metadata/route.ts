@@ -5,6 +5,9 @@
 
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
+import { google } from "@ai-sdk/google";
+import { MODEL_REGISTRY } from "@/lib/models/registry";
+import { getDocumentProcessingConfig } from "@/lib/document-processing-config-storage";
 
 // 使用 nodejs runtime 以确保可以访问环境变量
 export const runtime = 'nodejs';
@@ -12,11 +15,21 @@ export const runtime = 'nodejs';
 type DocumentMetadataRequest = {
   text: string;
   fileName: string;
+  options?: {
+    extractTOC?: boolean;
+    extractSummary?: boolean;
+    extractKeywords?: boolean;
+    extractTopics?: boolean;
+    extractKeyPhrases?: boolean;
+    modelId?: string; // Override default model
+  };
+  customPrompt?: string; // Custom summary prompt from client
 };
 
 type DocumentMetadataResponse = {
   success: boolean;
   metadata?: {
+    title?: string; // Generated document title
     summary: string;
     keywords: string[];
     topics: string[];
@@ -56,7 +69,13 @@ function smartSample(text: string, maxLength: number = 8000): string {
 export async function POST(req: Request): Promise<Response> {
   try {
     const body: DocumentMetadataRequest = await req.json();
-    const { text, fileName } = body;
+    const { text, fileName, options = {}, customPrompt } = body;
+    
+    // 获取模型配置（客户端设置或使用默认值）
+    const processingConfig = getDocumentProcessingConfig();
+    const modelId = options.modelId || processingConfig.summaryModel || 'openai/gpt-4o-mini';
+    
+    console.log("[Document Metadata API] Using model:", modelId);
 
     if (!text || !fileName) {
       return Response.json(
@@ -104,29 +123,85 @@ Return ONLY valid JSON:
   ]
 }`;
 
-    // 然后提取其他元数据（使用采样文本）
-    const metadataPrompt = `Analyze this document and return ONLY valid JSON:
+    // 使用自定义 prompt 或默认 prompt
+    const defaultPrompt = `You are an expert document analyst. Analyze this document and generate a comprehensive, detailed, and easy-to-understand summary.
 
+REQUIREMENTS FOR SUMMARY:
+1. Write 3-5 detailed paragraphs (not just sentences)
+2. First paragraph: Research background, problem statement, and motivation
+   - Explain what problem this research addresses
+   - Why is this problem important?
+   - What gap in knowledge does it fill?
+3. Second paragraph: Main methodology and approach
+   - What methods, techniques, or approaches are used?
+   - What are the key innovations or contributions?
+   - How is the research conducted?
+4. Third paragraph: Key findings and results
+   - What are the main discoveries or results?
+   - What evidence supports these findings?
+   - What are the quantitative or qualitative outcomes?
+5. Fourth paragraph (if applicable): Implications and significance
+   - What are the practical or theoretical implications?
+   - How does this research advance the field?
+   - What are potential applications?
+6. Use clear, accessible language that is easy to understand
+   - Avoid excessive jargon; if technical terms are necessary, provide brief explanations
+   - Write in a way that both experts and non-experts can understand
+   - Use concrete examples when possible
+7. Ensure the summary is comprehensive and captures the essence of the document
+
+Return ONLY valid JSON:
 {
-  "summary": "A comprehensive 3-5 sentence summary covering the main content, methodology, and findings",
-  "keywords": ["10-15 key terms"],
-  "topics": ["3-5 main topics"],
-  "keyPhrases": ["5-10 important phrases"]
+  "title": "A concise, descriptive title for this document (5-15 words)",
+  "summary": "Your detailed, multi-paragraph summary here (3-5 paragraphs, each 2-4 sentences)",
+  "keywords": ["10-15 key terms that are central to the document"],
+  "topics": ["3-5 main topics or themes"],
+  "keyPhrases": ["5-10 important phrases or concepts"]
 }
 
-Document: ${fileName}
-Text: ${analysisText.substring(0, 6000)}${analysisText.length > 6000 ? '...' : ''}`;
+Document: \${fileName}
+Text: \${text}`;
 
+    let metadataPrompt = customPrompt || defaultPrompt;
+    
+    // 替换 prompt 中的占位符
+    metadataPrompt = metadataPrompt
+      .replace(/\$\{fileName\}/g, fileName)
+      .replace(/\$\{text\}/g, analysisText.substring(0, 6000) + (analysisText.length > 6000 ? '...' : ''));
+
+    // 获取模型配置
+    const tocModelId = options.modelId || processingConfig.tocModel || 'openai/gpt-4o-mini';
+    const summaryModelId = options.modelId || processingConfig.summaryModel || 'openai/gpt-4o-mini';
+    
+    const tocModelConfig = MODEL_REGISTRY.find(m => m.id === tocModelId) || MODEL_REGISTRY.find(m => m.id === 'gpt-4o-mini')!;
+    const summaryModelConfig = MODEL_REGISTRY.find(m => m.id === summaryModelId) || MODEL_REGISTRY.find(m => m.id === 'gpt-4o-mini')!;
+    
+    // 创建模型实例
+    const getModel = (config: typeof tocModelConfig) => {
+      if (config.provider === 'openai') {
+        return openai(config.modelId);
+      } else if (config.provider === 'google') {
+        return google(config.modelId);
+      }
+      return openai('gpt-4o-mini'); // fallback
+    };
+    
+    const tocModel = getModel(tocModelConfig);
+    const summaryModel = getModel(summaryModelConfig);
+    
     // 并行提取目录和其他元数据
-    console.log("[Document Metadata API] Calling GPT-4o-mini for TOC extraction...");
+    console.log("[Document Metadata API] Calling models for extraction...");
+    console.log("[Document Metadata API] TOC model:", tocModelId, "(", tocModelConfig.displayName, ")");
+    console.log("[Document Metadata API] Summary model:", summaryModelId, "(", summaryModelConfig.displayName, ")");
+    
     const [tocResponse, metadataResponse] = await Promise.all([
       generateText({
-        model: openai("gpt-4o-mini"),
+        model: tocModel,
         prompt: tocPrompt,
         temperature: 0.2, // 更低温度，更准确的结构提取
       }),
       generateText({
-        model: openai("gpt-4o-mini"),
+        model: summaryModel,
         prompt: metadataPrompt,
         temperature: 0.3,
       }),
@@ -169,6 +244,7 @@ Text: ${analysisText.substring(0, 6000)}${analysisText.length > 6000 ? '...' : '
 
     // 验证和清理数据（不截断 summary，让 GPT 决定长度）
     metadata = {
+      title: metadata.title || fileName, // 使用生成的标题或文件名
       summary: metadata.summary || `Document: ${fileName}`,
       keywords: (metadata.keywords || []).slice(0, 15),
       topics: (metadata.topics || []).slice(0, 5),
