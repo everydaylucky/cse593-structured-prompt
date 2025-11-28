@@ -39,6 +39,7 @@ Related to #
 - [ ] 已添加/更新相关测试
 - [ ] 已更新相关文档
 - [ ] 已更新 `CHANGELOG.md`（在 `[Unreleased]` 部分）
+- [ ] 已更新 `README.md`（如果是版本发布，在 "Version History" 部分添加版本更新内容）
 - [ ] 已进行充分的自测
 - [ ] Commit 消息符合 [Conventional Commits](https://www.conventionalcommits.org/) 规范
 - [ ] PR 标题符合规范（格式：`<type>(<scope>): <subject>`）
@@ -75,6 +76,8 @@ Related to #
 
 **注意**: 合并此 PR 后，请确保：
 1. ✅ 已更新 `CHANGELOG.md`
-2. ✅ 如需要，已更新版本号
-3. ✅ 如需要，已创建版本标签
+2. ✅ 如需要，已更新 `README.md` 的版本历史
+3. ✅ 如需要，已更新版本号
+4. ✅ 如需要，已创建版本发布分支（`release/v0.0.x`）并在 GitHub 上创建 PR 合并
+5. ✅ 如需要，已创建版本标签
 

@@ -1,6 +1,6 @@
 # Contributing Guide
 
-本文档描述了项目的开发工作流程、Pull Request 规范和 Merge 指南。
+本文档描述了项目的开发工作流程、Pull Request 规范和 Merge 指南。z
 
 ## 📋 目录
 
@@ -212,18 +212,30 @@ Closes #123"
    # 在 CHANGELOG.md 的 [Unreleased] 或新版本下添加变更
    ```
 
-2. **更新版本号**（如需要）
+2. **更新 README.md**（如需要）
+   ```bash
+   # 在 README.md 的 "Version History" 部分添加版本更新内容
+   # 每个版本用一两句话总结主要更新
+   ```
+
+3. **更新版本号**（如需要）
    ```bash
    # 在 package.json 中更新版本号
    ```
 
-3. **创建版本标签**（如需要）
+4. **创建版本发布分支**（如需要）
+   ```bash
+   # 按照"版本发布流程"创建 release/v0.0.x 分支
+   # 在分支中更新版本信息，然后创建 PR 合并到 main
+   ```
+
+5. **创建版本标签**（如需要）
    ```bash
    git tag v0.0.5
    git push origin v0.0.5
    ```
 
-4. **删除已合并的分支**
+6. **删除已合并的分支**
    ```bash
    git branch -d feature/your-feature-name
    git push origin --delete feature/your-feature-name
@@ -233,28 +245,45 @@ Closes #123"
 
 ## 🚀 版本发布流程
 
-### 1. 准备发布
+### 1. 准备发布分支
 
 ```bash
 # 1. 确保所有更改已合并到主分支
 git checkout main
 git pull origin main
 
-# 2. 更新版本号
-# 编辑 package.json，更新 version 字段
-
-# 3. 更新 CHANGELOG.md
-# 将 [Unreleased] 改为新版本号，添加发布日期
+# 2. 创建版本发布分支（使用版本号作为分支名）
+git checkout -b release/v0.0.5
 ```
 
-### 2. 创建发布提交
+### 2. 更新版本信息
 
 ```bash
-git add package.json CHANGELOG.md
-git commit -m "chore: Release v0.0.5"
+# 1. 更新版本号
+# 编辑 package.json，更新 version 字段为 "0.0.5"
+
+# 2. 更新 CHANGELOG.md
+# 将 [Unreleased] 改为新版本号，添加发布日期
+
+# 3. 更新 README.md
+# 在 "Version History" 部分添加新版本的更新内容（用一两句话总结）
+# 格式：
+# ### v0.0.5
+# Brief description of the main updates in this version.
 ```
 
-### 3. 创建版本标签
+### 3. 创建发布提交
+
+```bash
+git add package.json CHANGELOG.md README.md
+git commit -m "chore: Release v0.0.5
+
+- Update version to 0.0.5
+- Update CHANGELOG.md
+- Update README.md with version history"
+```
+
+### 4. 创建版本标签
 
 ```bash
 git tag -a v0.0.5 -m "Release v0.0.5
@@ -262,16 +291,42 @@ git tag -a v0.0.5 -m "Release v0.0.5
 - Add RAG system
 - Fix dialog positioning
 - Improve document processing"
+```
+
+### 5. 推送发布分支和标签
+
+```bash
+# 推送发布分支到远程（不要直接推送到 main）
+git push origin release/v0.0.5
+
+# 推送版本标签
 git push origin v0.0.5
 ```
 
-### 4. 推送到远程
+### 6. 在 GitHub 上创建 Pull Request
+
+- 在 GitHub 上创建从 `release/v0.0.5` 到 `main` 的 Pull Request
+- PR 标题格式：`chore: Release v0.0.5`
+- PR 描述：从 CHANGELOG.md 复制该版本的更新内容
+- 等待代码审查（如需要）
+
+### 7. 合并到主分支
+
+- 在 GitHub 上使用 "Squash and Merge" 或 "Create a merge commit" 合并 PR
+- 合并后，主分支将包含所有版本更新
+
+### 8. 清理本地分支（可选）
 
 ```bash
-git push origin main
+# 切换回 main 分支
+git checkout main
+git pull origin main
+
+# 删除本地发布分支
+git branch -d release/v0.0.5
 ```
 
-### 5. 创建 GitHub Release
+### 9. 创建 GitHub Release（可选）
 
 - 在 GitHub 上创建新的 Release
 - 使用标签 `v0.0.5`
@@ -314,6 +369,7 @@ git push origin main
    - 将 `[Unreleased]` 改为版本号
    - 添加发布日期
    - 创建新的 `[Unreleased]` 部分
+   - **同时更新 README.md**：在 "Version History" 部分添加新版本，用一两句话总结主要更新
 
 3. **变更分类**
    - `Added`: 新功能
@@ -364,6 +420,7 @@ git push origin main
 - [ ] 已更新相关文档
 - [ ] Commit 消息符合规范
 - [ ] 已更新 CHANGELOG.md
+- [ ] 如需要，已更新 README.md 的版本历史
 
 ### PR 审查检查
 
@@ -374,6 +431,8 @@ git push origin main
 - [ ] 性能影响可接受
 - [ ] 安全性考虑充分
 - [ ] 已更新 CHANGELOG.md
+- [ ] 如需要，已更新 README.md 的版本历史
+- [ ] 版本发布时，已创建 `release/v0.0.x` 分支并在 GitHub 上创建 PR
 
 ---
 
