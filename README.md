@@ -41,5 +41,22 @@ Then open `http://localhost:3000` in your browser.
 
 ## Features
 
-- Structrued Prompts Panel: a preset lives in `data/initial.json` and is loaded into the panel on startup.
-- Cinematic: a few predefined round of conversations live in `data/cinematic.json` and can be triggered by the user.
+- **Structured Prompts Panel**: A preset lives in `data/initial.json` and is loaded into the panel on startup.
+- **Cinematic**: A few predefined round of conversations live in `data/cinematic.json` and can be triggered by the user.
+- **RAG System**: Complete document processing pipeline with PDF parsing, vector storage, and semantic search.
+- **Document Management**: Upload, process, and reference PDF documents in conversations.
+- **Settings Dialog**: Comprehensive settings interface with resizable dialog support.
+
+## Version History
+
+### v0.0.4 (Latest)
+Complete RAG (Retrieval-Augmented Generation) system implementation with document processing pipeline, vector storage using IndexedDB, semantic chunking, and enhanced settings dialog with resizable support.
+
+### v0.0.3
+Initial release with basic chat functionality, model mention support (`@model`), thread management, and Notion-style structured prompts editor.
+
+### v0.0.2
+Added notebook bookmarks feature for organizing prompt collections, conversation renaming functionality, and enhanced Notion-style editor with drag-and-drop support for better content organization.
+
+### v0.0.1
+Initial project setup with basic assistant-ui integration and structured prompts panel.
